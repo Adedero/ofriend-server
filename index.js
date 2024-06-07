@@ -31,6 +31,7 @@ app.use(asyncErrors);
 
 //Routes
 app.use('/auth', require('./src/routes/auth.routes'));
+app.use('/api', require('./src/routes/api/user.routes'));
 
 app.get('/', (req, res) => res.send({
   name: 'Ofriend',

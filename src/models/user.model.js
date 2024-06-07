@@ -51,6 +51,19 @@ const UserSchema = new mongoose.Schema({
   },
   businessDescription: {
     type: String
+  },
+  imageUrl: {
+    type: String,
+  },
+  followers: {
+    type: Number,
+    required: true,
+    default: 0
+  },
+  following: {
+    type: Number,
+    required: true,
+    default: 0
   }
 });
 
