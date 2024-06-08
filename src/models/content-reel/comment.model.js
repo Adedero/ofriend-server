@@ -19,28 +19,24 @@ const CommentSchema = new mongoose.Schema({
     default: false,
     index: true,
   },
-  comment: {
+  parentComment: {
     type: mongoose.Schema.Types.ObjectId,
-    required: true,
     ref: 'Comment',
     index: true
+  },
+  hasText: {
+    type: Boolean,
+    required: true,
+    default: false,
   },
   textContent: {
     type: String,
     required: true
   },
-  imageUrl: {
+  mediaUrl: {
     type: String,
   },
-  videoUrl: {
-    type: String,
-  },
-  hasImage: {
-    type: Boolean,
-    required: true,
-    default: false
-  },
-  hasVideo: {
+  hasMedia: {
     type: Boolean,
     required: true,
     default: false

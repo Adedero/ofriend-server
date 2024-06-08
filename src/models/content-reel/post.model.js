@@ -9,12 +9,17 @@ const PostSchema = new mongoose.Schema({
   textContent: {
     type: String,
   },
-  imageUrls: {
-    type: Array,
-  },
-  videoUrls: {
-    type: Array
-  },
+  media: [
+    {
+      url: {
+        type: String
+      },
+      type: {
+        type: String,
+        enum: ['image', 'video']
+      } 
+    }
+  ],
   likes: {
     type: Number,
     required: true,
@@ -45,14 +50,9 @@ const PostSchema = new mongoose.Schema({
   hasText: {
     type: Boolean,
     required: true,
-    default: true
-  },
-  hasImages: {
-    type: Boolean,
-    required: true,
     default: false
   },
-  hasVideos: {
+  hasMedia: {
     type: Boolean,
     required: true,
     default: false
@@ -80,6 +80,11 @@ const PostSchema = new mongoose.Schema({
     type: Boolean,
     required: true,
     default: true
+  },
+  isViewedNyAuthor: {
+    type: Boolean,
+    required: true,
+    default: false
   }
 });
 

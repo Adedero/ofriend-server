@@ -234,6 +234,7 @@ Router.post('/sign-in', (req, res, next) => {
           id: user._id,
           name: user.name,
           email: user.email,
+          imageUrl: user.imageUrl?? '',
           isVerified: user.isVerified,
           isOrg: user.isOrg
         }

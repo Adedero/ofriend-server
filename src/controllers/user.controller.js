@@ -65,9 +65,242 @@ const UserController = {
 
   //Create Post
   createPost: async (req, res) => {
-    
+    const post = req.body;
+    if (!post) {
+      return res.status(400).json({
+        success: false,
+        info: 'Failed to create post',
+        message: 'Your post cannot be empty.'
+      });
+    }
+    const user = req.user;
+    const processedPost = {
+      author: user.id,
+      ...post
+    }
+    const newPost = new Post(processedPost);
+    await newPost.save();
+
+    return res.status(200).json({
+      success: true,
+      info: 'Post created',
+      message: 'Your post has been created successfully.',
+      postId: newPost._id
+    });
+  },
+
+  //Gets a post
+  getPost: async (req, res) => {
+    const { postId } = req.params;
+    const userId = req.user.id;
+    if (!postId) {
+      return res.status(401).json({
+        success: false,
+        info: 'Bad request',
+        message: 'Failed to get post. Post ID is required'
+      });
+    }
+
+    //Check if viewer of post is author
+    //Check if viewer likes post
+
+    //Check if post can be seen by viewer if
+    //Post is public or viewer follows author and post status === 'FOLLOWERS'
+    //Post is private (cannot be viewed)
+    //Check if viewer is blocked by author
+    //Check if post is private
+    //Check if post has been reported by viewer
+    const post = await Post.findById(postId)
+      .populate('author', 'name imageUrl')
+      .lean();
+
+    // Fetch likes, follows, and blocks in parallel
+    const [likes, follows, blocks] = await Promise.all([
+      PostLike.find({ post: post._id, liker: userId }),
+      Follow.find({ user: post.author._id, follower: userId }),
+      Block.find({
+        $or: [
+          { blocker: userId, blockedUser: post.author._id },
+          { blockedUser: userId, blocker: post.author._id },
+        ],
+      }),
+    ]);
+
+    const likedPostIds = new Set(likes.map(like => like.post.toString()));
+    const followedUserIds = new Set(follows.map(follow => follow.user.toString()));
+    const blockedUserIds = new Set(
+      blocks.map(block =>
+        block.blocker.toString() === userId ? block.blockedUser.toString() : block.blocker.toString()
+      )
+    );
+
+    const isBlocked = blockedUserIds.has(post.author._id.toString());
+    const isLiked = likedPostIds.has(post._id.toString());
+    const isFollowed = followedUserIds.has(post.author._id.toString());
+
+    if (post.status === 'PRIVATE' || (post.status === 'FOLLOWERS' && !isFollowed) || isBlocked) {
+      post.isVisibleToViewer = false;
+    } else {
+      post.isVisibleToViewer = true;
+    }
+    post.isLikedByViewer = isLiked;
+    //console.log(post);
+    if (!post.isVisibleToViewer) {
+      return res.status(404).json({
+        success: false,
+        info: 'Not found.',
+        message: 'You are not allowed to view this post'
+      });
+    }
+    return res.status(200).json({
+      success: true,
+      post
+    })
+  },
+
+  //Creates comment
+  createComment: async (req, res) => {
+    const comment = req.body;
+    if (!comment) {
+      return res.status(400).json({
+        success: false,
+        info: 'Failed to create comment',
+        message: 'Your comment cannot be empty.'
+      });
+    }
+    const user = req.user;
+    const processedComment = {
+      author: user.id,
+      ...comment
+    }
+
+    const newComment = new Comment(processedComment);
+
+    if (processedComment.isReply) {
+      if (!processedComment.parentComment) {
+        return res.status(400).json({
+          success: false,
+          info: 'Failed to create comment',
+          message: 'Must provide a parent comment for this reply'
+        });
+      }
+      await Promise.all([
+        await newComment.save(),
+        await Post.findByIdAndUpdate(comment.post, { $inc: { comments: 1 } }),
+        await Comment.findByIdAndUpdate(processedComment.parentComment, { $inc: { replies: 1 } })
+      ]);
+    }
+
+    await Promise.all([
+      await newComment.save(),
+      await Post.findByIdAndUpdate(comment.post, { $inc: { comments: 1 } })
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      info: 'Comment created',
+      message: 'Your comment has been created successfully.',
+      comment: newComment
+    });
+  },
+
+  //Gets comments
+  getComments: async (req, res) => {
+    const { postId } = req.params;
+    if (!postId) {
+      return res.status(401).json({
+        success: false,
+        info: 'Bad request',
+        message: 'Failed to get post. Post ID is required'
+      });
+    }
+
+    const { skip, limit } = req.query;
+    const limitInt = parseInt(limit, 10);
+    const skipInt = parseInt(skip, 10);
+
+    if (isNaN(skipInt) || isNaN(limitInt) || limitInt > 5) {
+      return res.status(401).json({
+        success: false,
+        info: 'Bad request',
+        message: 'Invalid request query parameters or request exceeds limit.'
+      });
+    }
+
+    const comments = await Comment.find({ post: postId })
+      .sort({ updatedAt: -1 })
+      .populate('author', 'name imageUrl')
+      .skip(skipInt)
+      .limit(limitInt)
+      .lean();
+
+    const commentIds = comments.map(comment => comment._id);
+
+    const commentLikes = await CommentLike.find({
+      liker: req.user.id,
+      comment: { $in: commentIds }
+    }).lean();
+
+    const likedCommentsSet = new Set(commentLikes.map(like => like.comment.toString()));
+
+    comments.forEach(comment => {
+      comment.isLikedByViewer = likedCommentsSet.has(comment._id.toString());
+    });
+
+    return res.status(200).json({
+      success: true,
+      comments
+    });
   },
   
+  //Gets replies
+  getReplies: async (req, res) => {
+    const { postId, commentId } = req.params;
+    if (!postId || !commentId) {
+      return res.status(401).json({
+        success: false,
+        info: 'Bad request',
+        message: 'Failed to get repliees. Post and Comment IDs are required'
+      });
+    }
+
+    const { skip, limit } = req.query;
+    const limitInt = parseInt(limit, 10);
+    const skipInt = parseInt(skip, 10);
+
+    if (isNaN(skipInt) || isNaN(limitInt) || limitInt > 5) {
+      return res.status(401).json({
+        success: false,
+        info: 'Bad request',
+        message: 'Invalid request query parameters or request exceeds limit.'
+      });
+    }
+
+    const replies = await Comment.find({ post: postId, parentComment: commentId })
+      .sort({ updatedAt: -1 })
+      .populate('author', 'name imageUrl')
+      .skip(skipInt)
+      .limit(limitInt)
+      .lean();
+
+    const replyIds = replies.map(reply => reply._id);
+
+    const replyLikes = await CommentLike.find({
+      liker: req.user.id,
+      comment: { $in: replyIds }
+    }).lean();
+
+    const likedRepliesSet = new Set(replyLikes.map(like => like.comment.toString()));
+
+    replies.forEach(reply => {
+      reply.isLikedByViewer = likedRepliesSet.has(reply._id.toString());
+    });
+
+    return res.status(200).json({
+      success: true,
+      replies
+    });
+  }
 }
 
 module.exports = UserController;
