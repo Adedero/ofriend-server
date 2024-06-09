@@ -78,8 +78,20 @@ const UserController = {
       author: user.id,
       ...post
     }
+
     const newPost = new Post(processedPost);
-    await newPost.save();
+
+    if (processedPost.isReposting && processedPost.repostedPost) {
+      await Promise.all([
+        newPost.save(),
+        Post.findByIdAndUpdate(
+          processedPost.repostedPost,
+          { $inc: { reposts: 1 } },
+        )
+      ])
+    } else {
+      await newPost.save();
+    }
 
     return res.status(200).json({
       success: true,
@@ -113,6 +125,10 @@ const UserController = {
     const post = await Post.findById(postId)
       .populate('author', 'name imageUrl')
       .lean();
+
+    if (req.user.id === post.author._id) {
+      post.isViewedByAuthor = true;
+    }
 
     // Fetch likes, follows, and blocks in parallel
     const [likes, follows, blocks] = await Promise.all([
@@ -185,15 +201,15 @@ const UserController = {
         });
       }
       await Promise.all([
-        await newComment.save(),
-        await Post.findByIdAndUpdate(comment.post, { $inc: { comments: 1 } }),
-        await Comment.findByIdAndUpdate(processedComment.parentComment, { $inc: { replies: 1 } })
+        newComment.save(),
+        Post.findByIdAndUpdate(comment.post, { $inc: { comments: 1 } }),
+        Comment.findByIdAndUpdate(processedComment.parentComment, { $inc: { replies: 1 } })
       ]);
     }
 
     await Promise.all([
-      await newComment.save(),
-      await Post.findByIdAndUpdate(comment.post, { $inc: { comments: 1 } })
+      newComment.save(),
+      Post.findByIdAndUpdate(comment.post, { $inc: { comments: 1 } })
     ]);
 
     return res.status(200).json({
@@ -227,7 +243,7 @@ const UserController = {
       });
     }
 
-    const comments = await Comment.find({ post: postId })
+    const comments = await Comment.find({ post: postId, isReply: false })
       .sort({ updatedAt: -1 })
       .populate('author', 'name imageUrl')
       .skip(skipInt)
@@ -276,7 +292,7 @@ const UserController = {
       });
     }
 
-    const replies = await Comment.find({ post: postId, parentComment: commentId })
+    const replies = await Comment.find({ post: postId, isReply: true, parentComment: commentId })
       .sort({ updatedAt: -1 })
       .populate('author', 'name imageUrl')
       .skip(skipInt)
@@ -300,7 +316,112 @@ const UserController = {
       success: true,
       replies
     });
-  }
+  },
+
+  //Likes and unlikes a post
+  togglePostLike: async (req, res) => {
+    const { postId } = req.params;
+    if (!postId) {
+      return res.status(401).json({
+        success: false,
+        info: 'Failed',
+        message: 'No post ID provided.'
+      });
+    }
+    const postLike = await PostLike.findOne({ liker: req.user.id, post: postId });
+
+    if (postLike) {
+      await Promise.all([
+        Post.findByIdAndUpdate(postId, { $inc: { likes: -1 } }),
+        PostLike.deleteOne({ _id: postLike._id })
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        liked: false,
+        message: 'Post unliked.'
+      });
+    } else {
+      await Promise.all([
+        Post.findByIdAndUpdate(postId, { $inc: { likes: 1 } }),
+        PostLike.create({
+          liker: req.user.id,
+          post: postId
+        })
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        liked: true,
+        message: 'Post liked.'
+      });
+    }
+  },
+
+  //Likes and unlikes a comment
+  toggleCommentLike: async (req, res) => {
+    const { commentId } = req.params;
+    if (!commentId) {
+      return res.status(401).json({
+        success: false,
+        info: 'Failed',
+        message: 'No post ID provided.'
+      });
+    }
+    const commentLike = await CommentLike.findOne({ liker: req.user.id, comment: commentId });
+
+    if (commentLike) {
+      await Promise.all([
+        Comment.findByIdAndUpdate(commentId, { $inc: { likes: -1 } }),
+        CommentLike.deleteOne({ _id: commentLike._id })
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        liked: false,
+        message: 'Comment unliked.'
+      });
+    } else {
+      await Promise.all([
+        Comment.findByIdAndUpdate(commentId, { $inc: { likes: 1 } }),
+        CommentLike.create({
+          liker: req.user.id,
+          comment: commentId
+        })
+      ]);
+
+      return res.status(200).json({
+        success: true,
+        liked: true,
+        message: 'Comment liked.'
+      });
+    }
+  },
+
+  //See people who have liked a post
+  getPostLikers: async (req, res) => {
+    if (!req.params) return;
+    const { postId, skip, limit } = req.params;
+    const skipInt = parseInt(skip);
+    const limitInt = parseInt(limit);
+    if (limit > 20) {
+      return res.status(401).json({
+        success: false,
+        info: 'Bad request',
+        message: 'Invalid request query parameters or request exceeds limit.'
+      });
+    }
+    const postLikes = await PostLike.find({ post: postId }, { liker: 1 })
+      .skip(skipInt)
+      .limit(limitInt)
+      .populate('liker', 'name imageUrl')
+      .lean();
+
+    return res.status(200).json({
+      success: true,
+      likers: postLikes
+    });
+  },
 }
 
 module.exports = UserController;

@@ -22,5 +22,15 @@ Router.post('/create-comment', verifyAuth, UserController.createComment);
 //Gets replies to a comment
 Router.get('/get-replies/:postId/:commentId', verifyAuth, UserController.getReplies);
 
+//Like or unlike a post
+Router.post('/toggle-post-like/:postId', verifyAuth, UserController.togglePostLike);
+
+//Like or unlike a comment
+Router.post('/toggle-comment-like/:commentId', verifyAuth, UserController.toggleCommentLike);
+
+//Get people who have liked a post
+Router.get('/get-post-likers/:postId/:skip/:limit', verifyAuth, UserController.getPostLikers)
+
+
 
 module.exports = Router;

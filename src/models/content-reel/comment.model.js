@@ -31,7 +31,14 @@ const CommentSchema = new mongoose.Schema({
   },
   textContent: {
     type: String,
-    required: true
+  },
+  media: {
+    url: {
+      type: String
+    },
+    type: {
+      type: String,
+    }
   },
   mediaUrl: {
     type: String,

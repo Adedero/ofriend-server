@@ -16,7 +16,6 @@ const PostSchema = new mongoose.Schema({
       },
       type: {
         type: String,
-        enum: ['image', 'video']
       } 
     }
   ],
@@ -81,7 +80,7 @@ const PostSchema = new mongoose.Schema({
     required: true,
     default: true
   },
-  isViewedNyAuthor: {
+  isViewedByAuthor: {
     type: Boolean,
     required: true,
     default: false
