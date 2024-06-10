@@ -4,21 +4,31 @@ const Comment = require('../models/content-reel/comment.model');
 const PostLike = require('../models/content-reel/post-like.model');
 const CommentLike = require('../models/content-reel/comment-like.model');
 const Block = require('../models/content-reel/block.model');
-const Report = require('../models/content-reel/report.model');
+const Report = require('../models/admin/report.model');
 const Follow = require('../models/content-reel/follow.model');
+const SavedPost = require('../models/content-reel/saved-post.model')
 
 const UserController = {
   //Gets posts for the content reel
   //Second iteration
   getContentReel: async (req, res) => {
-    const { skip = 0 } = req.params;
+  
+    const { skip } = req.params;
     const limit = 10;
+    const userId = req.user.id;
 
     // Fetch posts with the author details
     const posts = await Post.find()
       .skip(Number(skip))
       .limit(Number(limit))
       .populate('author', 'name imageUrl')
+      .populate({
+        path: 'repostedPost',
+        populate: {
+          path: 'author',
+          select: 'name imageUrl'
+        }
+      })
       .lean();
 
     const postIds = posts.map(post => post._id);
@@ -26,12 +36,12 @@ const UserController = {
 
     // Fetch likes, follows, and blocks in parallel
     const [likes, follows, blocks] = await Promise.all([
-      PostLike.find({ post: { $in: postIds }, liker: req.user.id }),
-      Follow.find({ user: { $in: authorIds }, follower: req.user.id }),
+      PostLike.find({ post: { $in: postIds }, liker: userId }),
+      Follow.find({ user: { $in: authorIds }, follower: userId }),
       Block.find({
         $or: [
-          { blocker: req.user.id, blocked: { $in: authorIds } },
-          { blocked: req.user.id, blocker: { $in: authorIds } },
+          { blocker: userId, blocked: { $in: authorIds } },
+          { blocked: userId, blocker: { $in: authorIds } },
         ],
       }),
     ]);
@@ -40,27 +50,33 @@ const UserController = {
     const followedUserIds = new Set(follows.map(follow => follow.user.toString()));
     const blockedUserIds = new Set(
       blocks.map(block =>
-        block.blocker.toString() === req.user.id ? block.blocked.toString() : block.blocker.toString()
+        block.blocker.toString() === userId ? block.blocked.toString() : block.blocker.toString()
       )
     );
 
-    const viewablePosts = posts.map(post => {
-      const isBlocked = blockedUserIds.has(post.author._id.toString());
-      const isLiked = likedPostIds.has(post._id.toString());
-      const isFollowed = followedUserIds.has(post.author._id.toString());
+    // Filter posts that are viewable
+    const viewablePosts = posts.filter(post => {
+      const postAuthorId = post.author._id.toString();
+      const postId = post._id.toString();
+      const isBlocked = blockedUserIds.has(postAuthorId);
+      const isFollowed = followedUserIds.has(postAuthorId);
 
-      if (post.status === 'PRIVATE' || (post.status === 'FOLLOWERS' && !isFollowed) || isBlocked) {
-        post.isVisibleToViewer = false;
-      } else {
+      const isViewable = !(post.status === 'PRIVATE' ||
+        (post.status === 'FOLLOWERS' && !isFollowed) ||
+        isBlocked);
+
+      if (isViewable) {
         post.isVisibleToViewer = true;
+        post.isLikedByViewer = likedPostIds.has(postId);
+        post.viewerFollowsAuthor = isFollowed;
+        post.isViewedByAuthor = (userId === post.author._id.toString());
       }
 
-      post.isLikedByViewer = isLiked;
-
-      return post;
+      return isViewable;
     });
 
     return res.status(200).json(viewablePosts);
+    
   },
 
   //Create Post
@@ -105,73 +121,72 @@ const UserController = {
   getPost: async (req, res) => {
     const { postId } = req.params;
     const userId = req.user.id;
+
     if (!postId) {
-      return res.status(401).json({
+      return res.status(400).json({
         success: false,
         info: 'Bad request',
         message: 'Failed to get post. Post ID is required'
       });
     }
 
-    //Check if viewer of post is author
-    //Check if viewer likes post
-
-    //Check if post can be seen by viewer if
-    //Post is public or viewer follows author and post status === 'FOLLOWERS'
-    //Post is private (cannot be viewed)
-    //Check if viewer is blocked by author
-    //Check if post is private
-    //Check if post has been reported by viewer
-    const post = await Post.findById(postId)
+    let postQuery = Post.findById(postId)
       .populate('author', 'name imageUrl')
+      .populate({
+        path: 'repostedPost',
+        populate: {
+          path: 'author',
+          select: 'name imageUrl'
+        }
+      })
       .lean();
 
-    if (req.user.id === post.author._id) {
-      post.isViewedByAuthor = true;
+    const post = await postQuery;
+
+    if (!post) {
+      return res.status(404).json({
+        success: false,
+        info: 'Not found',
+        deleted: true,
+        message: 'This post has been deleted'
+      });
     }
 
-    // Fetch likes, follows, and blocks in parallel
+   
     const [likes, follows, blocks] = await Promise.all([
       PostLike.find({ post: post._id, liker: userId }),
       Follow.find({ user: post.author._id, follower: userId }),
       Block.find({
         $or: [
           { blocker: userId, blockedUser: post.author._id },
-          { blockedUser: userId, blocker: post.author._id },
-        ],
-      }),
+          { blockedUser: userId, blocker: post.author._id }
+        ]
+      })
     ]);
 
-    const likedPostIds = new Set(likes.map(like => like.post.toString()));
-    const followedUserIds = new Set(follows.map(follow => follow.user.toString()));
-    const blockedUserIds = new Set(
-      blocks.map(block =>
-        block.blocker.toString() === userId ? block.blockedUser.toString() : block.blocker.toString()
-      )
-    );
+    const isAuthor = userId === post.author._id.toString();
+    const isLiked = likes.length > 0;
+    const isFollowed = follows.length > 0;
+    const isBlocked = blocks.length > 0;
 
-    const isBlocked = blockedUserIds.has(post.author._id.toString());
-    const isLiked = likedPostIds.has(post._id.toString());
-    const isFollowed = followedUserIds.has(post.author._id.toString());
-
-    if (post.status === 'PRIVATE' || (post.status === 'FOLLOWERS' && !isFollowed) || isBlocked) {
-      post.isVisibleToViewer = false;
-    } else {
-      post.isVisibleToViewer = true;
-    }
+    post.isViewedByAuthor = isAuthor;
     post.isLikedByViewer = isLiked;
-    //console.log(post);
-    if (!post.isVisibleToViewer) {
-      return res.status(404).json({
+    post.viewerFollowsAuthor = isFollowed;
+
+    if (isBlocked || post.status === 'PRIVATE' || (post.status === 'FOLLOWERS' && !isFollowed)) {
+      return res.status(403).json({
         success: false,
-        info: 'Not found.',
+        info: 'Forbidden',
         message: 'You are not allowed to view this post'
       });
     }
+
+    post.isVisibleToViewer = true;
+
     return res.status(200).json({
       success: true,
       post
-    })
+    });
   },
 
   //Creates comment
@@ -421,6 +436,88 @@ const UserController = {
       success: true,
       likers: postLikes
     });
+  },
+
+  //Check if a user has saved a post
+  getPostSaveStatus: async (req, res) => {
+    const { postId } = req.params;
+    if (!postId) {
+      return res.status(404).json({
+        success: false,
+        info: 'Post not found'
+      })
+    }
+  
+    const savedPost = SavedPost.find({
+      user: req.user.id,
+      post: postId
+    }).lean();
+    const isSaved = savedPost.length ? true : false;
+    return res.status(200).json({
+      success: true,
+      isSaved
+    })
+  },
+
+  //Saves or unsaves a post
+  togglePostSave: async (req, res) => {
+    const { postId } = req.params;
+    const userId = req.user.id;
+    const savedPost = await SavedPost.findOne({ user: userId, post: postId });
+
+    if (savedPost) {
+      await SavedPost.deleteOne({ _id: savedPost._id });
+      return res.status(200).json({
+        success: true,
+        isSaved: false
+      });
+    }
+
+    await SavedPost.create({ user: userId, post: postId });
+    return res.status(200).json({
+      success: true,
+      isSaved: true
+    });
+  },
+
+  //follows or unfollows a user
+  toggleUserFollow: async (req, res) => {
+    const { authorId } = req.params;
+    const userId = req.user.id;
+    const follow = await Follow.findOne({ user: authorId, follower: userId }).lean();
+
+    if (follow) {
+      await Promise.all([
+        User.findByIdAndUpdate(authorId, { $inc: { followers: -1 } }),
+        User.findByIdAndUpdate(userId, { $inc: { following: -1 } }),
+        Follow.deleteOne({ _id: follow._id })
+      ])
+      return res.status(200).json({
+        success: true,
+        isFollowing: false
+      });
+    }
+
+    await Promise.all([
+      User.findByIdAndUpdate(authorId, { $inc: { followers: 1 } }),
+      User.findByIdAndUpdate(userId, { $inc: { following: 1 } }),
+      Follow.create({ user: authorId, follower: userId })
+    ])
+    return res.status(200).json({
+      success: true,
+      isFollowing: true
+    });
+  },
+
+  //Deletes a post
+  deletePost: async (req, res) => {
+    const { postId } = req.params;
+    //Delete Post
+    //Delete comments
+    //Delete Post Likes
+    //Delete Comment Likes
+    //Delete pictures???
+    return;
   },
 }
 

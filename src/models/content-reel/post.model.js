@@ -84,10 +84,20 @@ const PostSchema = new mongoose.Schema({
     type: Boolean,
     required: true,
     default: false
+  },
+  viewerFollowsAuthor: {
+    type: Boolean,
+    required: true,
+    default: false
   }
 });
 
 PostSchema.set('timestamps', true);
+
+PostSchema.pre('find', function (next) {
+  this.sort({ updatedAt: -1 });
+  next();
+});
 
 const Post = mongoose.model('Post', PostSchema);
 

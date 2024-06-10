@@ -29,7 +29,19 @@ Router.post('/toggle-post-like/:postId', verifyAuth, UserController.togglePostLi
 Router.post('/toggle-comment-like/:commentId', verifyAuth, UserController.toggleCommentLike);
 
 //Get people who have liked a post
-Router.get('/get-post-likers/:postId/:skip/:limit', verifyAuth, UserController.getPostLikers)
+Router.get('/get-post-likers/:postId/:skip/:limit', verifyAuth, UserController.getPostLikers);
+
+//Check if a post is saved 
+Router.get('/get-post-save-status/:postId', verifyAuth, UserController.getPostSaveStatus);
+
+//Saves or unsaves a post
+Router.put('/toggle-post-save/:postId', verifyAuth, UserController.togglePostSave);
+
+//Follows or unfollows a user
+Router.put('/toggle-user-follow/:authorId', verifyAuth, UserController.toggleUserFollow);
+
+//delete a post
+Router.delete('/delete-post/:postId', verifyAuth, UserController.deletePost)
 
 
 

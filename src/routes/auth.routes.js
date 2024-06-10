@@ -236,7 +236,8 @@ Router.post('/sign-in', (req, res, next) => {
           email: user.email,
           imageUrl: user.imageUrl?? '',
           isVerified: user.isVerified,
-          isOrg: user.isOrg
+          isOrg: user.isOrg,
+          createdAt: user.createdAt
         }
       });
     });
