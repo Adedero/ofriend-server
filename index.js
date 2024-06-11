@@ -7,6 +7,7 @@ const PORT = process.env.PORT;
 const cors = require('cors');
 const passport = require('./src/config/passport.config');
 const asyncErrors = require('./src/middleware/async-errors');
+const session = require('express-session');
 const MemoryStore = require('memorystore')(session)
 
 const app = express();
