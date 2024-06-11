@@ -7,6 +7,7 @@ const PORT = process.env.PORT;
 const cors = require('cors');
 const passport = require('./src/config/passport.config');
 const asyncErrors = require('./src/middleware/async-errors');
+const MemoryStore = require('memorystore')(session)
 
 const app = express();
 
@@ -18,12 +19,16 @@ app.use(cors({
 }));
 
 
-app.use(require('express-session')({
-  secret: process.env.SECRET_KEY,
+app.use(session({
+  cookie: { maxAge: 60 * 60 * 1000 },
+  store: new MemoryStore({
+    checkPeriod: 60 * 60 * 1000 // prune expired entries every 24h
+  }),
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 60 * 60 * 1000 },
+  secret: process.env.SECRET_KEY
 }));
+
 app.use(passport.initialize());
 app.use(passport.session());
 
