@@ -237,7 +237,8 @@ Router.post('/sign-in', (req, res, next) => {
           imageUrl: user.imageUrl?? '',
           isVerified: user.isVerified,
           isOrg: user.isOrg,
-          createdAt: user.createdAt
+          createdAt: user.createdAt,
+          bio: user.bio?? ''
         }
       });
     });

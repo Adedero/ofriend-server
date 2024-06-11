@@ -6,6 +6,9 @@ const UserController = require('../../controllers/user.controller');
 //Gets posts for the content reel
 Router.get('/content-reel/:skip', verifyAuth, UserController.getContentReel);
 
+//Gets followers and following for the sidebar in the home page
+Router.get('/followers-and-following', verifyAuth, UserController.getFollowersAndFollowing);
+
 //Creates a post
 Router.post('/create-post', verifyAuth, UserController.createPost);
 
@@ -41,7 +44,10 @@ Router.put('/toggle-post-save/:postId', verifyAuth, UserController.togglePostSav
 Router.put('/toggle-user-follow/:authorId', verifyAuth, UserController.toggleUserFollow);
 
 //delete a post
-Router.delete('/delete-post/:postId', verifyAuth, UserController.deletePost)
+Router.delete('/delete-post/:postId', verifyAuth, UserController.deletePost);
+
+//Gets saved posts of a user
+Router.get('/get-saved-posts/:skip', verifyAuth, UserController.getSavedPosts)
 
 
 

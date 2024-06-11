@@ -79,6 +79,26 @@ const UserController = {
     
   },
 
+  //Gets followers and following for the home page
+  getFollowersAndFollowing: async (req, res) => {
+    const userId = req.user.id;
+    const [ followers, following ] = await Promise.all([
+      Follow.find({ user: userId }, { follower: 1 })
+        .limit(3)
+        .populate('follower', 'name imageUrl bio')
+        .lean(),
+      Follow.find({ follower: userId }, { user: 1 })
+        .limit(3)
+        .populate('user', 'name imageUrl bio')
+        .lean()
+    ]);
+    return res.status(200).json({
+      success: true,
+      followers,
+      following
+    });
+  },
+
   //Create Post
   createPost: async (req, res) => {
     const post = req.body;
@@ -519,6 +539,29 @@ const UserController = {
     //Delete pictures???
     return;
   },
+
+  //Get saved posts
+  getSavedPosts: async (req, res) => {
+    const { skip } = req.query;
+    const skipInt = parseInt(skip, 10);
+    const savedPosts = await SavedPost.find(
+      { user: req.user.id }, { post: 1, createdAt: 1 })
+      .skip(skipInt)
+      .limit(8)
+      .populate({
+        path: 'post',
+        select: 'hasText textContent hasMedia media isReposting',
+        populate: {
+          path: 'author',
+          select: 'name imageUrl'
+        }
+      });
+
+    return res.status(200).json({
+      success: true,
+      savedPosts
+    });
+  }
 }
 
 module.exports = UserController;
