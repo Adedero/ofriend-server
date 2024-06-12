@@ -328,7 +328,7 @@ const UserController = {
     }
 
     const replies = await Comment.find({ post: postId, isReply: true, parentComment: commentId })
-      .sort({ updatedAt: -1 })
+      .sort({ createdAt: 1 })
       .populate('author', 'name imageUrl')
       .skip(skipInt)
       .limit(limitInt)
