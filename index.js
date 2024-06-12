@@ -25,9 +25,21 @@ app.use(cors({
   credentials: true
 }));
 
+process.env.NODE_ENV === 'production' ? 
 app.use(session({
-  cookie: { 
+  cookie: {
+    maxAge: 60 * 60 * 1000,
     sameSite: 'none',
+    secure: true
+  },
+  resave: false,
+  saveUninitialized: false,
+  secret: process.env.SECRET_KEY,
+  store: mongoStore
+}))
+
+: app.use(session({
+  cookie: { 
     maxAge: 60 * 60 * 1000
   },
   resave: false,
