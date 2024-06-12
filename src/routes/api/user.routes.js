@@ -47,7 +47,22 @@ Router.put('/toggle-user-follow/:authorId', verifyAuth, UserController.toggleUse
 Router.delete('/delete-post/:postId', verifyAuth, UserController.deletePost);
 
 //Gets saved posts of a user
-Router.get('/get-saved-posts/:skip', verifyAuth, UserController.getSavedPosts)
+Router.get('/get-saved-posts/:skip', verifyAuth, UserController.getSavedPosts);
+
+//Gets user profile
+Router.get('/get-user-profile/:userId', verifyAuth, UserController.getUserProfile);
+
+//Update bio
+Router.put('/update-bio', verifyAuth, UserController.updateBio);
+//Remove bio
+Router.put('/remove-bio', verifyAuth, UserController.removeBio);
+
+//Update profile image url
+Router.put('/update-image-url', verifyAuth, UserController.updateProfileImage);
+
+//Update banner image url
+Router.put('/update-banner-image-url', verifyAuth, UserController.updateBannerImage);
+
 
 
 

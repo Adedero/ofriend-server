@@ -26,7 +26,8 @@ const UserSchema = new mongoose.Schema({
     default: false
   },
   bio: {
-    type: String
+    type: String,
+    default: ''
   },
   birthday: {
     type: Date,
@@ -55,6 +56,9 @@ const UserSchema = new mongoose.Schema({
   imageUrl: {
     type: String,
   },
+  bannerImageUrl: {
+    type: String
+  },
   followers: {
     type: Number,
     required: true,
@@ -64,6 +68,16 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     required: true,
     default: 0
+  },
+  isViewingSelf: {
+    type: Boolean,
+    required: true,
+    default: false
+  },
+  viewerFollowsUser: {
+    type: Boolean,
+    required: true,
+    default: false
   }
 });
 

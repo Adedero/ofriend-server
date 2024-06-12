@@ -79,7 +79,7 @@ const UserController = {
     
   },
 
-  //Gets followers and following for the home page
+  //Gets 3 followers and 3 following for the home page
   getFollowersAndFollowing: async (req, res) => {
     const userId = req.user.id;
     const [ followers, following ] = await Promise.all([
@@ -561,7 +561,105 @@ const UserController = {
       success: true,
       savedPosts
     });
-  }
+  },
+
+  //Gets user profile
+  getUserProfile: async (req, res) => {
+    const { userId } = req.params;
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        info: 'Bad request',
+        message: 'No user ID provided.'
+      });
+    }
+    const [ user, isFollowing ] = await Promise.all([
+      User.findById(userId, {
+        name: 1,
+        isOrg: 1,
+        country: 1,
+        region: 1,
+        imageUrl: 1,
+        bannerImageUrl: 1,
+        bio: 1,
+        following: 1,
+        followers: 1,
+        createdAt: 1,
+        isViewingSelf: 1
+      }).lean(),
+
+      Follow.find({ user: userId, follower: req.user.id })
+    ])
+
+    user.isViewingSelf = (userId === req.user.id);
+    user.viewerFollowsUser = (isFollowing.length) > 0;
+
+    if (isFollowing.length) user.viewer
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        info: 'Not found',
+        message: 'User not found.'
+      });
+    }
+
+    return res.status(200).json(user);
+  },
+
+  //Update bio
+  updateBio: async (req, res) => {
+    const { bio } = req.body
+    await User.findByIdAndUpdate(req.user.id, { $set: { bio: bio } });
+    return res.status(200).json({
+      success: true,
+      message: 'Bio successfully changed'
+    });
+  },
+
+  removeBio: async (req, res) => {
+    await User.findByIdAndUpdate(req.user.id, { $set: { bio: '' } });
+    return res.status(200).json({
+      success: true,
+      message: 'Bio successfully removed'
+    });
+  },
+
+  //Update profile image URL
+  updateProfileImage: async (req, res) => {
+    const { imageUrl } = req.body;
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        info: 'Bad request',
+        message: 'No image URL provided.'
+      });
+    }
+
+    await User.findByIdAndUpdate(req.user.id, { $set: { imageUrl: imageUrl } });
+    return res.status(200).json({
+      success: true,
+      message: 'Profile image successfully changed'
+    });
+  },
+
+  //Update banner image URL
+  updateBannerImage: async (req, res) => {
+    const { imageUrl } = req.body;
+    if (!imageUrl) {
+      return res.status(400).json({
+        success: false,
+        info: 'Bad request',
+        message: 'No image URL provided.'
+      });
+    }
+
+    await User.findByIdAndUpdate(req.user.id, { $set: { bannerImageUrl: imageUrl } });
+    return res.status(200).json({
+      success: true,
+      message: 'Banner image successfully changed'
+    });
+  },
 }
 
 module.exports = UserController;
