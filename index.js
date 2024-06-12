@@ -8,9 +8,13 @@ const cors = require('cors');
 const passport = require('./src/config/passport.config');
 const asyncErrors = require('./src/middleware/async-errors');
 const session = require('express-session');
-const MemoryStore = require('memorystore')(session)
+const MongoStore = require('connect-mongo');
 
 const app = express();
+
+const mongoStore = MongoStore.create({
+  mongoUrl: process.env.MONGODB_LOCAL
+})
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -19,15 +23,12 @@ app.use(cors({
   credentials: true
 }));
 
-
 app.use(session({
   cookie: { maxAge: 60 * 60 * 1000 },
-  store: new MemoryStore({
-    checkPeriod: 60 * 60 * 1000 // prune expired entries every 24h
-  }),
   resave: false,
   saveUninitialized: false,
-  secret: process.env.SECRET_KEY
+  secret: process.env.SECRET_KEY,
+  store: mongoStore
 }));
 
 app.use(passport.initialize());
