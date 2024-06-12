@@ -14,7 +14,9 @@ const app = express();
 
 const mongoStore = MongoStore.create({
   mongoUrl: process.env.MONGODB_LOCAL
-})
+});
+
+app.set("trust proxy" , 1);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
@@ -24,7 +26,10 @@ app.use(cors({
 }));
 
 app.use(session({
-  cookie: { maxAge: 60 * 60 * 1000 },
+  cookie: { 
+    sameSite: 'none',
+    maxAge: 60 * 60 * 1000
+  },
   resave: false,
   saveUninitialized: false,
   secret: process.env.SECRET_KEY,
