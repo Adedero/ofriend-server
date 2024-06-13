@@ -63,6 +63,15 @@ Router.put('/update-image-url', verifyAuth, UserController.updateProfileImage);
 //Update banner image url
 Router.put('/update-banner-image-url', verifyAuth, UserController.updateBannerImage);
 
+//Gets user's posts to show on their Profile
+Router.get('/get-user-posts/:authorId/:skip', verifyAuth, UserController.getUserPosts);
+
+//Gets user's media to show on their Profile
+Router.get('/get-user-media/:authorId/:skip', verifyAuth, UserController.getUserMedia);
+
+//Gets user's followers or following for their profile
+Router.get('/get-user-follows/:userId/:skip/:type', verifyAuth, UserController.getUserFollows)
+
 
 
 

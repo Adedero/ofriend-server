@@ -573,6 +573,50 @@ const UserController = {
         message: 'No user ID provided.'
       });
     }
+
+    if (userId === req.user.id) {
+      const user = await User.findById(userId, {
+        name: 1,
+        isOrg: 1,
+        country: 1,
+        region: 1,
+        imageUrl: 1,
+        bannerImageUrl: 1,
+        bio: 1,
+        following: 1,
+        followers: 1,
+        createdAt: 1,
+        isViewingSelf: 1
+      }).lean();
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          info: 'Not found',
+          message: 'User not found.'
+        });
+      }
+
+      user.isViewingSelf = true;
+      user.viewerFollowsUser = false;
+
+      return res.status(200).json(user);
+    }
+
+    const blocks = Block.find({
+      $or: [
+        { blocker: req.user.id, blockedUser: userId },
+        { blocker: userId, blockedUser: req.user.id }
+      ]
+    });
+
+    if (blocks.length) {
+      return res.status(403).json({
+        success: false,
+        info: 'Forbidden',
+        message: 'You are not allowed to view this profile.'
+      });
+    }
     const [ user, isFollowing ] = await Promise.all([
       User.findById(userId, {
         name: 1,
@@ -588,13 +632,8 @@ const UserController = {
         isViewingSelf: 1
       }).lean(),
 
-      Follow.find({ user: userId, follower: req.user.id })
-    ])
-
-    user.isViewingSelf = (userId === req.user.id);
-    user.viewerFollowsUser = (isFollowing.length) > 0;
-
-    if (isFollowing.length) user.viewer
+      Follow.find({ user: userId, follower: req.user.id }),
+    ]);
 
     if (!user) {
       return res.status(404).json({
@@ -603,6 +642,9 @@ const UserController = {
         message: 'User not found.'
       });
     }
+
+    user.isViewingSelf = false;
+    user.viewerFollowsUser = (isFollowing.length) > 0;
 
     return res.status(200).json(user);
   },
@@ -658,6 +700,220 @@ const UserController = {
     return res.status(200).json({
       success: true,
       message: 'Banner image successfully changed'
+    });
+  },
+
+  getUserPosts: async (req, res) => {
+    const { authorId, skip } = req.params;
+    if (!authorId) {
+      return res.status(400).json({
+        success: false,
+        info: 'Bad request',
+        message: 'No user ID provided.'
+      });
+    }
+    const SKIP = parseInt(skip, 10);
+    const LIMIT = 8
+    const userId = req.user.id;
+
+    if (authorId === userId) {
+      const userPosts = await Post.find({
+        author: authorId
+      }).skip(SKIP)
+        .limit(LIMIT)
+        .populate('author', 'name imageUrl')
+        .populate({
+          path: 'repostedPost',
+          populate: {
+            path: 'author',
+            select: 'name imageUrl'
+          }
+        })
+        .lean();
+
+      const postIds = userPosts.map(post => post._id);
+
+      const likes = await PostLike.find({ post: { $in: postIds }, liker: userId });
+
+      const likedPostIds = new Set(likes.map(like => like.post.toString()));
+
+      userPosts.forEach(post => {
+        const postId = post._id.toString();
+        post.isLikedByViewer = likedPostIds.has(postId);
+        post.viewerFollowsAuthor = false;
+        post.isViewedByAuthor = true;
+      });
+
+      return res.status(200).json(userPosts);
+    }
+
+    // Fetch posts with the author details
+    const posts = await Post.find({
+      author: authorId
+    }).skip(SKIP)
+      .limit(LIMIT)
+      .populate('author', 'name imageUrl')
+      .populate({
+        path: 'repostedPost',
+        populate: {
+          path: 'author',
+          select: 'name imageUrl'
+        }
+      })
+      .lean();
+
+    const postIds = posts.map(post => post._id);
+
+    // Fetch likes, follows, and blocks in parallel
+    const [likes, follows] = await Promise.all([
+      PostLike.find({ post: { $in: postIds }, liker: userId }),
+      Follow.find({ user: authorId, follower: userId }),
+    ]);
+
+    const likedPostIds = new Set(likes.map(like => like.post.toString()));
+    
+    posts.forEach(post => {
+      const postId = post._id.toString();
+      post.isLikedByViewer = likedPostIds.has(postId);
+      post.viewerFollowsAuthor = follows.length > 0;
+      post.isViewedByAuthor = (userId === authorId);
+    });
+    // Filter posts that are viewable
+    const userPosts = posts.filter(post => {
+      const postId = post._id.toString();
+      const isFollowed = follows.length > 0;
+
+      const isViewable = !(post.status === 'PRIVATE' ||
+        (post.status === 'FOLLOWERS' && !isFollowed));
+
+      if (isViewable) {
+        post.isVisibleToViewer = true;
+        post.isLikedByViewer = likedPostIds.has(postId);
+        post.viewerFollowsAuthor = isFollowed;
+        post.isViewedByAuthor = false;
+      }
+
+      return isViewable;
+    });
+
+    return res.status(200).json(userPosts);
+  },
+
+  getUserMedia: async (req, res) => {
+    const { authorId, skip } = req.params;
+    if (!authorId) {
+      return res.status(400).json({
+        success: false,
+        info: 'Bad request',
+        message: 'No user ID provided.'
+      });
+    }
+    const SKIP = parseInt(skip, 10);
+    const LIMIT = 10
+    const userId = req.user.id;
+
+    if (authorId === userId) {
+      const posts = await Post.find(
+        {
+          author: authorId,
+          hasMedia: true
+        },
+        { media: 1 })
+        .skip(SKIP)
+        .limit(LIMIT)
+        .lean();
+
+      const media = posts.flatMap(post =>
+        post.media.map((mediaItem, index) => ({
+          url: mediaItem.url,
+          type: mediaItem.type,
+          postId: post._id.toString()
+        }))
+      );
+      return res.status(200).json(media);
+    }
+
+    const posts = await Post.find({
+      author: authorId,
+      hasMedia: true
+    }, { media: 1 })
+      .skip(SKIP)
+      .limit(LIMIT)
+      .lean();
+
+    const follows = await Follow.find({ user: authorId, follower: userId })
+
+    // Filter posts that are viewable
+    const viewablePosts = posts.filter(post => {
+      const postId = post._id.toString();
+      const isFollowed = follows.length > 0;
+      const isViewable = !(post.status === 'PRIVATE' ||
+        (post.status === 'FOLLOWERS' && !isFollowed));
+      return isViewable;
+    });
+
+    const media = viewablePosts.flatMap(post =>
+      post.media.map((mediaItem, index) => ({
+        url: mediaItem.url,
+        type: mediaItem.type,
+        postId: post._id.toString()
+      }))
+    );
+    return res.status(200).json(media); 
+  },
+
+  getUserFollows: async (req, res) => {
+    const { userId, skip, type } = req.params;
+    if (!userId || !type) {
+      return res.status(400).json({
+        success: false,
+        info: 'Bad request',
+        message: 'No user ID or type provided.'
+      });
+    } 
+    const SKIP = parseInt(skip);
+    const LIMIT = 10;
+
+    if (type === 'followers') {
+      const follows = await Follow.find({ user: userId })
+        .populate('follower', 'name imageUrl')
+        .skip(SKIP)
+        .limit(LIMIT)
+        .lean();
+
+      const followers = follows.map(follow => {
+        return {
+          id: follow.follower._id,
+          name: follow.follower.name,
+          imageUrl: follow.follower.imageUrl
+        }
+      });
+      
+      return res.status(200).json(followers);
+    }
+
+    if (type === 'following') {
+      const follows = await Follow.find({ follower: userId })
+        .populate('user', 'name imageUrl')
+        .skip(SKIP)
+        .limit(LIMIT)
+        .lean();
+
+      const following = follows.map(follow => {
+        return {
+          id: follow.user._id,
+          name: follow.user.name,
+          imageUrl: follow.user.imageUrl
+        }
+      });
+
+      return res.status(200).json(following);
+    }
+
+    return res.status(400).json({
+      success: false,
+      info: 'Bad request',
+      message: 'Invalid type provided.'
     });
   },
 }

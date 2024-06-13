@@ -54,7 +54,8 @@ const PostSchema = new mongoose.Schema({
   hasMedia: {
     type: Boolean,
     required: true,
-    default: false
+    default: false,
+    index: true
   },
   isEdited: {
     type: Boolean,
