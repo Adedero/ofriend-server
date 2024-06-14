@@ -261,7 +261,33 @@ const ProfileController = {
   changePassword: async (req, res) => {
     const { oldpassword, newpassword, confirm } = req.body;
     checkParams([ oldpassword, newpassword, confirm ]);
+    const userId = req.user.id;
+
+    if (confirm === newpassword) {
+      return res.status(400).json({
+        success: false,
+        info: 'Request failed',
+        message: 'Passwords do not match.'
+      });
+    }
     const user = await User.findById(userId, { password: 1 });
+
+    const isMatch = await bcrypt.compare(oldpassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        success: false,
+        info: 'Request failed',
+        message: 'Incorrect password.'
+      });
+    }
+    const hashedPassword = await bcrypt.hash(newpassword, 10);
+    user.password = hashedPassword;
+    await user.save();
+    return res.status(200).json({
+      success: true,
+      info: 'Success',
+      message: 'Password changed successfully'
+    });
   },
 
   deleteAccount: async (req, res) => {
