@@ -1,5 +1,5 @@
 const verifyAuth = async (req, res, next) => {
-  if (req.user && req.isAuthenticated()) {
+  if (req.user && req.isAuthenticated() && req.user.isVerified) {
     next();
   } else {
     return res.status(401).json({

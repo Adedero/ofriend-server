@@ -9,6 +9,26 @@ const Follow = require('../models/content-reel/follow.model');
 const SavedPost = require('../models/content-reel/saved-post.model')
 
 const UserController = {
+  //Gets user full profile
+  getFullProfile: async (req, res) => {
+    const userId = req.user.id;
+    const user = await User.findById(userId, {
+      imageUrl: 0,
+      bannerImageUrl: 0,
+      followers: 0,
+      following: 0,
+      password: 0
+    }).lean();
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        info: 'User not found',
+        message: 'No user with the supplied ID was found.'
+      });
+    }
+    user.isViewingSelf = true;
+    return res.status(200).json(user);
+  },
   //Gets posts for the content reel
   //Second iteration
   getContentReel: async (req, res) => {
@@ -916,6 +936,60 @@ const UserController = {
       message: 'Invalid type provided.'
     });
   },
+
+  searchFollowing: async (req, res) => {
+    const { userId, search, type, skip } = req.query;
+    if (!userId || !search || !type || !skip ) {
+      return res.status(400).json({
+        success: false,
+        info: 'Bad request',
+        message: 'No user ID, search query, or type provided.'
+      });
+    }
+    const SKIP = parseInt(skip, 10);
+    const LIMIT = 10;
+
+    let follows;
+    // Handle followers type
+    if (type === 'followers') {
+      follows = await Follow.find({
+        user: userId
+      }, { follower: 1 })
+        .skip(SKIP)
+        .limit(LIMIT)
+        .populate({
+          path: 'follower',
+          select: 'name imageUrl',
+          match: { name: new RegExp(search, 'i') }  // Case-insensitive search
+        })
+        .lean();
+    }
+
+    // Handle following type
+    else if (type === 'following') {
+      follows = await Follow.find({
+        follower: userId
+      },{ user: 1 })
+        .skip(SKIP)
+        .limit(LIMIT)
+        .populate({
+          path: 'user',
+          select: 'name imageUrl',
+          match: { name: new RegExp(search, 'i') }  // Case-insensitive search
+        })
+        .lean();
+    } else {
+      return res.status(400).json({
+        success: false,
+        info: 'Bad request',
+        message: 'Invalid type provided. Must be "followers" or "following".'
+      });
+    }
+
+    follows = follows.filter(follow => follow[type === 'followers' ? 'follower' : 'user'] !== null);
+
+    return res.status(200).json(follows);
+  }
 }
 
 module.exports = UserController;

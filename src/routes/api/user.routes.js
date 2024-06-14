@@ -2,7 +2,10 @@ const express = require('express');
 const Router = express.Router();
 const verifyAuth = require('../../middleware/check-auth');
 const UserController = require('../../controllers/user.controller');
+const ProfileController = require('../../controllers/user-profile.controller');
 
+//Gets full profile
+Router.get('/get-full-profile', verifyAuth, UserController.getFullProfile);
 //Gets posts for the content reel
 Router.get('/content-reel/:skip', verifyAuth, UserController.getContentReel);
 
@@ -70,7 +73,43 @@ Router.get('/get-user-posts/:authorId/:skip', verifyAuth, UserController.getUser
 Router.get('/get-user-media/:authorId/:skip', verifyAuth, UserController.getUserMedia);
 
 //Gets user's followers or following for their profile
-Router.get('/get-user-follows/:userId/:skip/:type', verifyAuth, UserController.getUserFollows)
+Router.get('/get-user-follows/:userId/:skip/:type', verifyAuth, UserController.getUserFollows);
+
+//Search for followers or following
+Router.get('/search-following', verifyAuth, UserController.searchFollowing);
+
+//Change name
+Router.put('/change-name', verifyAuth, ProfileController.changeName);
+
+//Change email
+Router.put('/change-email', verifyAuth, ProfileController.changeEmail);
+
+//Change birthday
+Router.put('/change-birthday', verifyAuth, ProfileController.changeBirthday);
+
+//Change gender
+Router.put('/change-gender', verifyAuth, ProfileController.changeGender);
+
+//Change country and region
+Router.put('/change-country-and-region', verifyAuth, ProfileController.changeCountryAndRegion);
+
+//Change address
+Router.put('/change-address', verifyAuth, ProfileController.changeAddress);
+
+//Change business description
+Router.put('/change-business-description', verifyAuth, ProfileController.changeBusinessDescription);
+
+//View blocked users
+Router.get('/view-blocked-users', verifyAuth, ProfileController.getBlockedUsers);
+
+//block user
+Router.post('/block-user/:userId', verifyAuth, ProfileController.blockUser);
+
+//unblock user
+Router.post('/unblock-user/:userId', verifyAuth, ProfileController.unblockUser);
+
+//Delete account
+Router.delete('/delete-account', verifyAuth, ProfileController.deleteAccount);
 
 
 
