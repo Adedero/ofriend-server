@@ -2,6 +2,7 @@ const User = require('../models/user.model');
 const Block = require('../models/content-reel/block.model');
 const Follow = require('../models/content-reel/follow.model')
 const checkParams = require('../utils/check-params');
+const bcrypt = require('bcrypt');
 
 
 const ProfileController = {
@@ -255,6 +256,12 @@ const ProfileController = {
       success: true,
       message: 'User successfully unblocked'
     })
+  },
+
+  changePassword: async (req, res) => {
+    const { oldpassword, newpassword, confirm } = req.body;
+    checkParams([ oldpassword, newpassword, confirm ]);
+    const user = await User.findById(userId, { password: 1 });
   },
 
   deleteAccount: async (req, res) => {

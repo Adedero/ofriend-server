@@ -108,6 +108,9 @@ Router.post('/block-user/:userId', verifyAuth, ProfileController.blockUser);
 //unblock user
 Router.post('/unblock-user/:userId', verifyAuth, ProfileController.unblockUser);
 
+//Change password
+Router.put('/change-password', verifyAuth, ProfileController.changePassword)
+
 //Delete account
 Router.delete('/delete-account', verifyAuth, ProfileController.deleteAccount);
 
