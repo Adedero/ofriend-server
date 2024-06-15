@@ -263,7 +263,7 @@ const ProfileController = {
     checkParams([ oldpassword, newpassword, confirm ]);
     const userId = req.user.id;
 
-    if (confirm === newpassword) {
+    if (confirm !== newpassword) {
       return res.status(400).json({
         success: false,
         info: 'Request failed',
