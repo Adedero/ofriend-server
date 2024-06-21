@@ -2,6 +2,7 @@ require('dotenv').config();
 require('express-async-errors');
 require('./src/database/db')();
 
+const http = require('http');
 const express = require('express');
 const PORT = process.env.PORT;
 const cors = require('cors');
@@ -9,8 +10,18 @@ const passport = require('./src/config/passport.config');
 const asyncErrors = require('./src/middleware/async-errors');
 const session = require('express-session');
 const MongoStore = require('connect-mongo');
+const {Server} = require("socket.io");
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: process.env.CLIENT_URL
+  }
+});
+module.exports = io;
+
+require('./src/socket/socket');
 
 const mongoStore = MongoStore.create({
   mongoUrl: process.env.MONGODB_LOCAL
@@ -59,8 +70,8 @@ app.use('/api', require('./src/routes/api/user.routes'));
 
 app.get('/', (req, res) => res.send({
   name: 'Ofriend',
-  verion: '1.0',
+  version: '1.0',
   location: 'Nigeria',
 }));
 
-app.listen(PORT, () => console.log(`Ofriend server started on http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Ofriend server started on http://localhost:${PORT}`));

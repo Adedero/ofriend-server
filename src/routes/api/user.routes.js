@@ -3,6 +3,7 @@ const Router = express.Router();
 const verifyAuth = require('../../middleware/check-auth');
 const UserController = require('../../controllers/user.controller');
 const ProfileController = require('../../controllers/user-profile.controller');
+const ChatController = require('../../controllers/chat.controller');
 
 //Gets full profile
 Router.get('/get-full-profile', verifyAuth, UserController.getFullProfile);
@@ -114,6 +115,29 @@ Router.put('/change-password', verifyAuth, ProfileController.changePassword)
 //Delete account
 Router.delete('/delete-account', verifyAuth, ProfileController.deleteAccount);
 
+//CHAT FUNCTIONALITIES
+Router.post('/initialize-chat', verifyAuth, ChatController.initializeChat);
+
+//Get chats
+Router.get('/get-chats', verifyAuth, ChatController.getChats);
+
+//Get messages 
+Router.get('/get-messages/:chatId', verifyAuth, ChatController.getMessages);
+
+//Send message
+Router.post('/send-message', verifyAuth, ChatController.sendMessage);
+
+//Delete message
+Router.put('/delete-message/:id', verifyAuth, ChatController.deleteMessage);
+
+//Edit message
+Router.put('/edit-message/:id', verifyAuth, ChatController.editMessage);
+
+//Clear messages
+Router.delete('/clear-messages/:chatId', verifyAuth, ChatController.clearMessages);
+
+//Delete chat
+Router.delete('/delete-conversation/:chatId', verifyAuth, ChatController.deleteConversation);
 
 
 

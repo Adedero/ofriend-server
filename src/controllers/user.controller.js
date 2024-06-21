@@ -6,7 +6,8 @@ const CommentLike = require('../models/content-reel/comment-like.model');
 const Block = require('../models/content-reel/block.model');
 const Report = require('../models/admin/report.model');
 const Follow = require('../models/content-reel/follow.model');
-const SavedPost = require('../models/content-reel/saved-post.model')
+const SavedPost = require('../models/content-reel/saved-post.model');
+const eventEmitter = require('../events/notifications.event');
 
 const UserController = {
   //Gets user full profile
