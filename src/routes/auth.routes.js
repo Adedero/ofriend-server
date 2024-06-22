@@ -1,8 +1,11 @@
+require('dotenv').config();
+
 const emailAndPasswordSchema = require('../validations/joi-schemas');
+const jwt = require('jsonwebtoken');
 const express = require('express');
 const Router = express.Router();
 const User = require('../models/user.model');
-const passport = require('../config/passport.config');
+const passport = require('../config/passport-jwt.config');
 const bcrypt = require('bcrypt');
 const OTP = require('../models/otp.model');
 const { sendTextEmail } = require('../utils/mailer');
@@ -220,6 +223,42 @@ Router.post('/verify-account/:otp', async (req, res) => {
   });
 });
 
+Router.post('/sign-in', async (req, res, next) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email: email });
+  if (!user) {
+    return res.status(404).json({
+      success: false,
+      info: 'Invalid email',
+      message: 'Email address not found.'
+    });
+  }
+  const isPasswordValid = await bcrypt.compare(password, user.password);
+  if (!isPasswordValid) {
+    return res.status(403).json({
+      success: false,
+      info: 'Forbidden',
+      message: 'Incorrect password.'
+    });
+  }
+  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+  return res.status(200).json({ 
+    message: "user logged in",
+    token,
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      imageUrl: user.imageUrl ?? '',
+      isVerified: user.isVerified,
+      isOrg: user.isOrg,
+      createdAt: user.createdAt,
+      bio: user.bio ?? ''
+    }
+  });
+})
+/* 
 Router.post('/sign-in', (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
     if (err) return res.status(500).json({ message: 'Authentication failed', err })
@@ -243,7 +282,7 @@ Router.post('/sign-in', (req, res, next) => {
       });
     });
   })(req, res, next);
-});
+}); */
 
 //Confirms user authentication for various purposes
 Router.get('/check-auth', (req, res) => {

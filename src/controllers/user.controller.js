@@ -35,7 +35,7 @@ const UserController = {
   getContentReel: async (req, res) => {
   
     const { skip } = req.params;
-    const limit = 10;
+    const limit = 6;
     const userId = req.user.id;
 
     // Fetch posts with the author details
@@ -594,8 +594,7 @@ const UserController = {
         message: 'No user ID provided.'
       });
     }
-
-    if (userId === req.user.id) {
+    if (userId === req.user.id.toString()) {
       const user = await User.findById(userId, {
         name: 1,
         isOrg: 1,
