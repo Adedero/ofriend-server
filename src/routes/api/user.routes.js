@@ -16,6 +16,9 @@ Router.get('/followers-and-following', verifyAuth, UserController.getFollowersAn
 //Creates a post
 Router.post('/create-post', verifyAuth, UserController.createPost);
 
+//Edit post
+Router.put('/edit-post/:postId', verifyAuth, UserController.editPost)
+
 //Gets a post to view
 Router.get('/get-post/:postId', verifyAuth, UserController.getPost);
 
@@ -138,6 +141,8 @@ Router.delete('/clear-messages/:chatId', verifyAuth, ChatController.clearMessage
 
 //Delete chat
 Router.delete('/delete-conversation/:chatId', verifyAuth, ChatController.deleteConversation);
+
+
 
 
 

@@ -8,6 +8,8 @@ const Report = require('../models/admin/report.model');
 const Follow = require('../models/content-reel/follow.model');
 const SavedPost = require('../models/content-reel/saved-post.model');
 const eventEmitter = require('../events/notifications.event');
+const checkParams = require('../utils/check-params');
+
 
 const UserController = {
   //Gets user full profile
@@ -158,6 +160,61 @@ const UserController = {
     });
   },
 
+  //Edit podt
+  editPost: async (req, res) => {
+    const { postId } = req.params;
+    const { edit } = req.body
+    checkParams([postId, edit]);
+    await Post.updateOne({ _id: postId }, { $set: edit });
+    return res.status(200).json({
+      success: true,
+      info: 'Post edited',
+      message: 'Post edited successfully'
+    })
+    
+  },
+
+  //Deletes a post
+  deletePost: async (req, res) => {
+    const { postId } = req.params;
+    checkParams([postId]);
+    const BATCH_SIZE = 100;
+
+    let commentIds = [];
+    let lastId = null;
+
+    while (true) {
+      const query = lastId ? { post: postId, _id: { $gt: lastId } } : { post: postId };
+      const comments = await Comment.find(query, { _id: 1 }).limit(BATCH_SIZE).sort({ _id: 1 });
+
+      if (comments.length === 0) {
+        break;
+      }
+
+      commentIds = commentIds.concat(comments.map(comment => comment._id));
+      lastId = comments[comments.length - 1]._id;
+    }
+
+    await Promise.all([
+      Post.deleteOne({ _id: postId }),
+      Comment.deleteMany({ post: postId }),
+      PostLike.deleteMany({ post: postId }),
+    ]);
+
+    let totalDeletedCommentLikes = 0;
+    while (commentIds.length > 0) {
+      const batch = commentIds.splice(0, BATCH_SIZE);
+      const commentLikeResult = await CommentLike.deleteMany({ comment: { $in: batch } });
+      totalDeletedCommentLikes += commentLikeResult.deletedCount;
+    }
+    return res.status(200).json({
+      success: true,
+      info: 'Post deleted',
+      message: 'Post deleted successfully',
+    });
+  },
+
+
   //Gets a post
   getPost: async (req, res) => {
     const { postId } = req.params;
@@ -193,7 +250,6 @@ const UserController = {
       });
     }
 
-   
     const [likes, follows, blocks] = await Promise.all([
       PostLike.find({ post: post._id, liker: userId }),
       Follow.find({ user: post.author._id, follower: userId }),
@@ -548,17 +604,6 @@ const UserController = {
       success: true,
       isFollowing: true
     });
-  },
-
-  //Deletes a post
-  deletePost: async (req, res) => {
-    const { postId } = req.params;
-    //Delete Post
-    //Delete comments
-    //Delete Post Likes
-    //Delete Comment Likes
-    //Delete pictures???
-    return;
   },
 
   //Get saved posts
