@@ -244,7 +244,8 @@ Router.post('/sign-in', async (req, res, next) => {
   const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
   return res.status(200).json({ 
-    message: "user logged in",
+    info: 'Success',
+    message: "Sign in successful",
     token,
     user: {
       id: user._id,
@@ -303,7 +304,7 @@ Router.get('/check-auth', (req, res) => {
   });
 });
 
-Router.get('/sign-out', (req, res) => {
+Router.post('/sign-out', (req, res) => {
   req.logout((err) => {
     if (err) {
       return res.status(500).json({ message: 'Logout failed', error: err });
