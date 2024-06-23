@@ -39,23 +39,43 @@ const UserController = {
   getContentReel: async (req, res) => {
   
     const { skip } = req.params;
+    const { products } = req.query;
+    checkParams([ skip, products ])
     const limit = 6;
     const userId = req.user.id;
 
     // Fetch posts with the author details
-    const posts = await Post.find()
-      .skip(Number(skip))
-      .limit(Number(limit))
-      .populate('author', 'name imageUrl')
-      .populate({
-        path: 'repostedPost',
-        populate: {
-          path: 'author',
-          select: 'name imageUrl'
-        }
-      })
-      .lean();
+    let posts;
+    if (products === 'true') {
+      posts = await Post.find({ isProduct: true })
+        .skip(Number(skip))
+        .limit(Number(limit))
+        .populate('author', 'name imageUrl')
+        .populate({
+          path: 'repostedPost',
+          populate: {
+            path: 'author',
+            select: 'name imageUrl'
+          }
+        })
+        .lean();
+    } 
 
+    if (products === 'false') {
+      posts = await Post.find({ isProduct: false })
+        .skip(Number(skip))
+        .limit(Number(limit))
+        .populate('author', 'name imageUrl')
+        .populate({
+          path: 'repostedPost',
+          populate: {
+            path: 'author',
+            select: 'name imageUrl'
+          }
+        })
+        .lean();
+    }
+  
     const postIds = posts.map(post => post._id);
     const authorIds = posts.map(post => post.author._id);
 

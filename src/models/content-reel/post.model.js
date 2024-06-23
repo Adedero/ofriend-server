@@ -6,6 +6,12 @@ const PostSchema = new mongoose.Schema({
     ref: 'User',
     index: true
   },
+  isProduct: {
+    type: Boolean,
+    required: true,
+    default: false,
+    index: true,
+  },
   textContent: {
     type: String,
   },
