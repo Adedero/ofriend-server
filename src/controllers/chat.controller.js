@@ -27,6 +27,7 @@ const ChatController = {
             ...msg,
             chat: existingChat._id,
             sender: req.user.id,
+            readBy: [req.user.id]
         });
 
         existingChat.lastMessage = newMessage._id;
@@ -51,7 +52,7 @@ const ChatController = {
         })
         .populate({
             path: 'lastMessage',
-            select: 'hasText textContent hasFile file isRead createdAt isDeleted'
+            select: 'sender hasText textContent hasFile file isRead createdAt isDeleted'
         }).lean();
 
         const chatIds = chats.map(chat => chat._id);
