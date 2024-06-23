@@ -85,8 +85,8 @@ const UserController = {
       Follow.find({ user: { $in: authorIds }, follower: userId }),
       Block.find({
         $or: [
-          { blocker: userId, blocked: { $in: authorIds } },
-          { blocked: userId, blocker: { $in: authorIds } },
+          { blocker: userId, blockedUser: { $in: authorIds } },
+          { blockedUser: userId, blocker: { $in: authorIds } },
         ],
       }),
     ]);
@@ -95,7 +95,7 @@ const UserController = {
     const followedUserIds = new Set(follows.map(follow => follow.user.toString()));
     const blockedUserIds = new Set(
       blocks.map(block =>
-        block.blocker.toString() === userId ? block.blocked.toString() : block.blocker.toString()
+        block.blocker.toString() === userId ? block.blockedUser.toString() : block.blocker.toString()
       )
     );
 
