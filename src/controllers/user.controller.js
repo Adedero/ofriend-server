@@ -143,10 +143,7 @@ const UserController = {
     if (processedPost.isReposting && processedPost.repostedPost) {
       await Promise.all([
         newPost.save(),
-        Post.findByIdAndUpdate(
-          processedPost.repostedPost,
-          { $inc: { reposts: 1 } },
-        )
+        Post.updateOne({ _id: processedPost.repostedPost }, { $inc: { reposts: 1 } })
       ])
     } else {
       await newPost.save();
@@ -314,14 +311,14 @@ const UserController = {
       }
       await Promise.all([
         newComment.save(),
-        Post.findByIdAndUpdate(comment.post, { $inc: { comments: 1 } }),
-        Comment.findByIdAndUpdate(processedComment.parentComment, { $inc: { replies: 1 } })
+        Post.updateOne({ _id: comment.post }, { $inc: { comments: 1 } }),
+        Comment.updateOne({ _id: processedComment.parentComment }, { $inc: { replies: 1 } })
       ]);
     }
 
     await Promise.all([
       newComment.save(),
-      Post.findByIdAndUpdate(comment.post, { $inc: { comments: 1 } })
+      Post.updateOne({ _id: comment.post }, { $inc: { comments: 1 } })
     ]);
 
     return res.status(200).json({
@@ -444,7 +441,7 @@ const UserController = {
 
     if (postLike) {
       await Promise.all([
-        Post.findByIdAndUpdate(postId, { $inc: { likes: -1 } }),
+        Post.updateOne({ _id: postId }, { $inc: { likes: -1 } }),
         PostLike.deleteOne({ _id: postLike._id })
       ]);
 
@@ -455,7 +452,7 @@ const UserController = {
       });
     } else {
       await Promise.all([
-        Post.findByIdAndUpdate(postId, { $inc: { likes: 1 } }),
+        Post.updateOne({ _id: postId }, { $inc: { likes: 1 } }),
         PostLike.create({
           liker: req.user.id,
           post: postId
