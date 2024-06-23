@@ -9,6 +9,8 @@ const Follow = require('../models/content-reel/follow.model');
 const SavedPost = require('../models/content-reel/saved-post.model');
 const eventEmitter = require('../events/notifications.event');
 const checkParams = require('../utils/check-params');
+const mongoose = require('mongoose');
+
 
 
 const UserController = {
@@ -174,6 +176,7 @@ const UserController = {
   //Deletes a post
   deletePost: async (req, res) => {
     const { postId } = req.params;
+    const { repostedPost } = req.query;
     checkParams([postId]);
     const BATCH_SIZE = 100;
 
@@ -192,11 +195,20 @@ const UserController = {
       lastId = comments[comments.length - 1]._id;
     }
 
-    await Promise.all([
-      Post.deleteOne({ _id: postId }),
-      Comment.deleteMany({ post: postId }),
-      PostLike.deleteMany({ post: postId }),
-    ]);
+    if (repostedPost) {
+      await Promise.all([
+        Post.deleteOne({ _id: postId }),
+        Post.updateOne({ _id: repostedPost }, { $inc: { reposts: -1 } }),
+        Comment.deleteMany({ post: postId }),
+        PostLike.deleteMany({ post: postId }),
+      ]);
+    } else {
+      await Promise.all([
+        Post.deleteOne({ _id: postId }),
+        Comment.deleteMany({ post: postId }),
+        PostLike.deleteMany({ post: postId }),
+      ]);
+    }
 
     let totalDeletedCommentLikes = 0;
     while (commentIds.length > 0) {
@@ -329,6 +341,75 @@ const UserController = {
     });
   },
 
+  //Edit comment
+  editComment: async (req, res) => {
+    const { commentId } = req.params;
+    const { edit } = req.body
+    checkParams([commentId, edit]);
+    await Comment.updateOne({ _id: commentId }, { $set: edit });
+    return res.status(200).json({
+      success: true,
+      info: 'Comment edited',
+      message: 'Comment edited successfully'
+    })
+  },
+
+  //Delete comment
+  deleteComment: async (req, res) => {
+    let { commentId, postId } = req.params;
+    const { parent } = req.query;
+  
+    checkParams([commentId, postId]);
+
+    commentId = mongoose.Types.ObjectId.createFromHexString(commentId);
+
+    const BATCH_SIZE = 100;
+
+    //Delete replies of comment if it has any
+    let replyIds = [];
+    let lastId = null;
+
+    while (true) {
+      const query = lastId ? { parentComment: commentId, _id: { $gt: lastId } } : { parentComment: commentId };
+      const replies = await Comment.find(query, { _id: 1 }).limit(BATCH_SIZE).sort({ _id: 1 });
+
+      if (replies.length === 0) {
+        break;
+      }
+
+      replyIds = replyIds.concat(replies.map(reply => reply._id));
+      lastId = replies[replies.length - 1]._id;
+    }
+
+    if (mongoose.Types.ObjectId.isValid(parent)) {
+      await Promise.all([
+        Comment.deleteOne({ _id: commentId }),
+        Comment.updateOne({ _id: parent }, { $inc: { replies: -1 } }),
+        Comment.deleteMany({ parentComment: commentId }),
+        CommentLike.deleteMany({ comment: commentId }),
+        Post.updateOne({ _id: postId }, { $inc: { comments: -1 } })
+      ]);
+    } else {
+      await Promise.all([
+        Comment.deleteOne({ _id: commentId }),
+        Comment.deleteMany({ parentComment: commentId }),
+        CommentLike.deleteMany({ comment: commentId }),
+        Post.updateOne({ _id: postId }, { $inc: { comments: -1 } })
+      ]);
+    }
+
+    let totalDeletedReplyLikes = 0;
+    while (replyIds.length > 0) {
+      const batch = replyIds.splice(0, BATCH_SIZE);
+      const replyLikeResult = await CommentLike.deleteMany({ comment: { $in: batch } });
+      totalDeletedReplyLikes += replyLikeResult.deletedCount;
+    }
+    return res.status(200).json({
+      success: true,
+      info: 'Comment deleted',
+      message: 'Comment deleted successfully',
+    });
+  },
   //Gets comments
   getComments: async (req, res) => {
     const { postId } = req.params;

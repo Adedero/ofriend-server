@@ -17,7 +17,10 @@ Router.get('/followers-and-following', verifyAuth, UserController.getFollowersAn
 Router.post('/create-post', verifyAuth, UserController.createPost);
 
 //Edit post
-Router.put('/edit-post/:postId', verifyAuth, UserController.editPost)
+Router.put('/edit-post/:postId', verifyAuth, UserController.editPost);
+
+//delete a post
+Router.delete('/delete-post/:postId', verifyAuth, UserController.deletePost);
 
 //Gets a post to view
 Router.get('/get-post/:postId', verifyAuth, UserController.getPost);
@@ -28,6 +31,12 @@ Router.get('/get-comments/:postId', verifyAuth, UserController.getComments);
 //Creates a comment or reply to a comment
 //Updates comments count on the target post
 Router.post('/create-comment', verifyAuth, UserController.createComment);
+
+//Edit comment
+Router.put('/edit-comment/:commentId', verifyAuth, UserController.editComment);
+
+//Delete comment
+Router.delete('/delete-comment/:commentId/:postId', verifyAuth, UserController.deleteComment);
 
 //Gets replies to a comment
 Router.get('/get-replies/:postId/:commentId', verifyAuth, UserController.getReplies);
@@ -49,9 +58,6 @@ Router.put('/toggle-post-save/:postId', verifyAuth, UserController.togglePostSav
 
 //Follows or unfollows a user
 Router.put('/toggle-user-follow/:authorId', verifyAuth, UserController.toggleUserFollow);
-
-//delete a post
-Router.delete('/delete-post/:postId', verifyAuth, UserController.deletePost);
 
 //Gets saved posts of a user
 Router.get('/get-saved-posts/:skip', verifyAuth, UserController.getSavedPosts);

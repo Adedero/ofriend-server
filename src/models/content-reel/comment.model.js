@@ -40,9 +40,6 @@ const CommentSchema = new mongoose.Schema({
       type: String,
     }
   },
-  mediaUrl: {
-    type: String,
-  },
   hasMedia: {
     type: Boolean,
     required: true,
