@@ -20,6 +20,15 @@ const verifyAuth = async (req, res, next) => {
       });
     }
 
+    if (!user.isVerified) {
+      return res.status(403).json({
+        success: false,
+        authMessage: true,
+        info: 'Forbidden',
+        message: 'Please, verify your account to continue.'
+      });
+    }
+
     req.user = {
       ...user,
       id: user._id.toString(), 
