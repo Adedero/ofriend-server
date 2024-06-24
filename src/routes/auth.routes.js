@@ -287,7 +287,7 @@ Router.post('/sign-in', (req, res, next) => {
 
 //Confirms user authentication for various purposes
 Router.get('/check-auth', (req, res) => {
-  if (!req.user || !req.isAuthenticated()) {
+  if (!req.user) {
     return res.status(401).json({
       isAuthenticated: false,
       info: 'Not authenticated.',
