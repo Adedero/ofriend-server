@@ -35,11 +35,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('typing', (chatId) => {
-        socket.to(chatId).emit('isTyping');
+        socket.broadcast.to(chatId).emit('isTyping');
     });
 
     socket.on('stopTyping', (chatId) => {
-        socket.to(chatId).emit('isNotTyping');
+        socket.broadcast.to(chatId).emit('isNotTyping');
     });
 
     socket.on('deleteMessage', (chatId, messageId) => {

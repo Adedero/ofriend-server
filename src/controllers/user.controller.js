@@ -10,7 +10,7 @@ const SavedPost = require('../models/content-reel/saved-post.model');
 const eventEmitter = require('../events/notifications.event');
 const checkParams = require('../utils/check-params');
 const mongoose = require('mongoose');
-
+const Notification = require('../models/notification.model');
 
 
 const UserController = {
@@ -326,6 +326,9 @@ const UserController = {
       });
     }
     const user = req.user;
+    const postAuthorId = comment.postAuthor;
+    const commentAuthorId = comment.commentAuthor;
+
     const processedComment = {
       author: user.id,
       ...comment
@@ -344,14 +347,39 @@ const UserController = {
       await Promise.all([
         newComment.save(),
         Post.updateOne({ _id: comment.post }, { $inc: { comments: 1 } }),
-        Comment.updateOne({ _id: processedComment.parentComment }, { $inc: { replies: 1 } })
+        Comment.updateOne({ _id: processedComment.parentComment }, { $inc: { replies: 1 } }),
       ]);
+
+      await Notification.create({
+        user: commentAuthorId,
+        fromUser: user.id,
+        type: 'reply',
+        isRead: false,
+        post: comment.post,
+        comment: newComment._id,
+      });
+
+      return res.status(200).json({
+        success: true,
+        info: 'Comment created',
+        message: 'Your comment has been created successfully.',
+        comment: newComment
+      });
     }
 
     await Promise.all([
       newComment.save(),
       Post.updateOne({ _id: comment.post }, { $inc: { comments: 1 } })
     ]);
+
+    await Notification.create({
+      user: postAuthorId,
+      fromUser: user.id,
+      type: 'comment',
+      isRead: false,
+      post: comment.post,
+      comment: newComment._id,
+    });
 
     return res.status(200).json({
       success: true,
