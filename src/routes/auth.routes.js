@@ -10,6 +10,7 @@ const bcrypt = require('bcrypt');
 const OTP = require('../models/otp.model');
 const { sendTextEmail } = require('../utils/mailer');
 const randomInteger = require('../utils/random-int');
+const verifyWithoutVerification = require('../middleware/verify-jwt');
 
 //Registers  a personal account
 Router.post('/register/personal', async (req, res) => {
@@ -116,7 +117,7 @@ Router.post('/register/org', async (req, res) => {
   });
 });
 
-Router.post('/send-mail/:email', async(req, res) => {
+Router.post('/send-mail/:email', verifyWithoutVerification, async(req, res) => {
   const user = req.user;
   if (!user) {
     return res.status(400).json({
@@ -160,7 +161,7 @@ Router.post('/send-mail/:email', async(req, res) => {
   });
 });
 
-Router.post('/verify-account/:otp', async (req, res) => {
+Router.post('/verify-account/:otp', verifyWithoutVerification, async (req, res) => {
   if (!req.user) {
     return res.status(400).json({
       success: false,
@@ -185,7 +186,7 @@ Router.post('/verify-account/:otp', async (req, res) => {
       message: 'No OTP provided. Could not complete account verification'
     });
   }
-  const existingOtp = await OTP.findOne({ user: req.user });
+  const existingOtp = await OTP.findOne({ user: req.user._id });
   if (!existingOtp) {
     return res.status(400).json({
       success: false,
@@ -286,7 +287,7 @@ Router.post('/sign-in', (req, res, next) => {
 }); */
 
 //Confirms user authentication for various purposes
-Router.get('/check-auth', (req, res) => {
+Router.get('/check-auth', verifyWithoutVerification, (req, res) => {
   if (!req.user) {
     return res.status(401).json({
       isAuthenticated: false,
