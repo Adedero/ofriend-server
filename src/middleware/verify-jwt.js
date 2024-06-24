@@ -1,4 +1,4 @@
-const passport = require('../config/passport-jwt');
+const passport = require('../config/passport-jwt.config');
 
 const verifyWithoutVerification = async (req, res, next) => {
   passport.authenticate('jwt', (err, user, info) => {
