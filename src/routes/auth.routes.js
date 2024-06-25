@@ -305,14 +305,14 @@ Router.get('/check-auth', verifyWithoutVerification, (req, res) => {
   });
 });
 
-Router.post('/sign-out', (req, res) => {
+/* Router.post('/sign-out', (req, res) => {
   req.logout((err) => {
     if (err) {
       return res.status(500).json({ message: 'Logout failed', error: err });
     }
     return res.status(200).json({ message: 'Logged out' });
   });
-});
+}); */
 
 //Sends email for password recovery
 Router.post('/send-password-recovery-email/:email', async (req, res) => {
