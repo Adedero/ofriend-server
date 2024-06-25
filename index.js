@@ -1,6 +1,10 @@
 require('dotenv').config();
 require('express-async-errors');
 require('./src/database/db')();
+const { redisConnection } = require('./src/config/redis.config');
+redisConnection();
+
+require('./src/services/push-notifications')
 
 const http = require('http');
 const express = require('express');
@@ -11,7 +15,8 @@ const passport = require('./src/config/passport-jwt.config');
 const asyncErrors = require('./src/middleware/async-errors');
 //const session = require('express-session');
 //const MongoStore = require('connect-mongo');
-const {Server} = require("socket.io");
+const { Server } = require("socket.io");
+
 
 const app = express();
 const server = http.createServer(app);

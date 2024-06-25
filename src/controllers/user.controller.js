@@ -175,7 +175,7 @@ const UserController = {
       success: true,
       info: 'Post created',
       message: 'Your post has been created successfully.',
-      postId: newPost._id
+      post: newPost
     });
   },
 

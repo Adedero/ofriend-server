@@ -1,19 +1,30 @@
 const User = require('../models/user.model');
 const Message = require('../models/chat/message.model');
+const Follow = require('../models/content-reel/follow.model');
+const { client } = require('../config/redis.config');
 
 const io = require('../../index');
 const SocketHandler = require('./socket.handler');
 io.on('connection', (socket) => {
     console.log('Socket connection established. Socket ID: ', socket.id);
+
     socket.on('disconnect', () => {
         console.log('Socket connection disconnected');
     });
 
     socket.on('online', (id) => {
+        client.set(id, socket.id)
+            .then(reply => console.log(reply))
+            .catch(error => console.log(Error))
+
         SocketHandler.setUserOnline(id, socket);
     });
 
     socket.on('offline', (id) => {
+        client.del(id)
+            .then(reply => console.log(reply))
+            .catch(error => console.log(error))
+
         SocketHandler.setUserOffline(id, socket)
     });
 
@@ -48,5 +59,13 @@ io.on('connection', (socket) => {
 
     socket.on('editMessage', (chatId, messageId, text) => {
         socket.to(chatId).emit('messageEdited', messageId, text);
+    });
+
+    //Comments
+    socket.on('comment-created', async (comment) => {
+        const authorSocketId = await client.get(comment.author);
+        if (authorSocketId) {
+            io.to(authorSocketId).emit('new-comment', comment);
+        } 
     })
 });
