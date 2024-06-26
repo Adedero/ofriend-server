@@ -1,16 +1,15 @@
 require('dotenv').config();
 
-const emailAndPasswordSchema = require('../validations/joi-schemas');
+const emailAndPasswordSchema = require('../../validations/joi-schemas');
 const jwt = require('jsonwebtoken');
 const express = require('express');
 const Router = express.Router();
-const User = require('../models/user.model');
-const passport = require('../config/passport-jwt.config');
+const User = require('../../models/user.model');
 const bcrypt = require('bcrypt');
-const OTP = require('../models/otp.model');
-const { sendTextEmail } = require('../utils/mailer');
-const randomInteger = require('../utils/random-int');
-const verifyWithoutVerification = require('../middleware/verify-jwt');
+const OTP = require('../../models/otp.model');
+const { sendTextEmail } = require('../../utils/mailer');
+const randomInteger = require('../../utils/random-int');
+const verifyWithoutVerification = require('../../middleware/verify-jwt');
 
 //Registers  a personal account
 Router.post('/register/personal', async (req, res) => {
@@ -259,32 +258,7 @@ Router.post('/sign-in', async (req, res, next) => {
       bio: user.bio ?? ''
     }
   });
-})
-/* 
-Router.post('/sign-in', (req, res, next) => {
-  passport.authenticate('local', (err, user, info) => {
-    if (err) return res.status(500).json({ message: 'Authentication failed', err })
-    if (!user) return res.status(400).json(info);
-
-    req.logIn(user, (err) => {
-      if (err) return res.status(500).json({ message: 'Authentication failed', err });
-
-      return res.status(200).json({
-        message: 'Authentication successful',
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          imageUrl: user.imageUrl?? '',
-          isVerified: user.isVerified,
-          isOrg: user.isOrg,
-          createdAt: user.createdAt,
-          bio: user.bio?? ''
-        }
-      });
-    });
-  })(req, res, next);
-}); */
+});
 
 //Confirms user authentication for various purposes
 Router.get('/check-auth', verifyWithoutVerification, (req, res) => {
@@ -304,15 +278,6 @@ Router.get('/check-auth', verifyWithoutVerification, (req, res) => {
     }
   });
 });
-
-/* Router.post('/sign-out', (req, res) => {
-  req.logout((err) => {
-    if (err) {
-      return res.status(500).json({ message: 'Logout failed', error: err });
-    }
-    return res.status(200).json({ message: 'Logged out' });
-  });
-}); */
 
 //Sends email for password recovery
 Router.post('/send-password-recovery-email/:email', async (req, res) => {

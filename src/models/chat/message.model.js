@@ -49,11 +49,6 @@ const MessageSchema = new mongoose.Schema({
     type: Boolean,
     default: true
   },
-/*   isRead: {
-    type: Boolean,
-    default: false,
-    index: true
-  }, */
   readBy: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -71,6 +66,10 @@ const MessageSchema = new mongoose.Schema({
   isDeleted: {
     type: Boolean,
     required: true,
+    default: false
+  },
+  isRemoved: {
+    type: Boolean,
     default: false
   }
 });

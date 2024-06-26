@@ -59,6 +59,9 @@ Router.put('/toggle-post-save/:postId', verifyAuth, UserController.togglePostSav
 //Follows or unfollows a user
 Router.put('/toggle-user-follow/:authorId', verifyAuth, UserController.toggleUserFollow);
 
+//Subscribes or unsubscribes from a user
+Router.put('/toggle-user-subscribe/:authorId', verifyAuth, UserController.toggleUserSubscribe);
+
 //Gets saved posts of a user
 Router.get('/get-saved-posts/:skip', verifyAuth, UserController.getSavedPosts);
 

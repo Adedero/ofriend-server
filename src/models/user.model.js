@@ -80,12 +80,22 @@ const UserSchema = new mongoose.Schema({
     required: true,
     default: 0
   },
+  subscibers: {
+    type: Number,
+    required: true,
+    default: 0
+  },
   isViewingSelf: {
     type: Boolean,
     required: true,
     default: false
   },
   viewerFollowsUser: {
+    type: Boolean,
+    required: true,
+    default: false
+  },
+  viewerIsSubscribedToUser: {
     type: Boolean,
     required: true,
     default: false
@@ -99,6 +109,9 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
     required: true
+  },
+  subscription: {
+    type: mongoose.Schema.Types.Mixed
   }
 });
 

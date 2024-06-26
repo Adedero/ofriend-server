@@ -1,10 +1,15 @@
 const User = require('../models/user.model');
 const Message = require('../models/chat/message.model');
-const Follow = require('../models/content-reel/follow.model');
-const { client } = require('../config/redis.config');
+const Subscription = require('../models/content-reel/subscription.model');
+const { subscribersQueue } = require('../services/post-notification.service');
+const webpush = require('../services/push-notifications');
+const Notification = require('../models/notification.model');
+const redis = require('../config/redis.config');
+
+
 
 const io = require('../../index');
-const SocketHandler = require('./socket.handler');
+
 io.on('connection', (socket) => {
     console.log('Socket connection established. Socket ID: ', socket.id);
 
@@ -12,29 +17,124 @@ io.on('connection', (socket) => {
         console.log('Socket connection disconnected');
     });
 
-    socket.on('online', (id) => {
-        client.set(id, socket.id)
-            .then(reply => console.log(reply))
-            .catch(error => console.log(Error))
+    socket.on('online', async (id) => {
+        if (!id) return;
+        const update = {
+            isOnline: true,
+            lastSeen: Date.now()
+        }
 
-        SocketHandler.setUserOnline(id, socket);
+        const user = await User.findByIdAndUpdate(id, { $set: update }, { new: true });
+        socket.broadcast.emit('userOnline', id);
+
+        const sub = user.subscription;
+        if (sub) {
+            await redis.set(`sub-${user._id.toString()}`, JSON.stringify(sub));
+        }        
     });
 
-    socket.on('offline', (id) => {
-        client.del(id)
-            .then(reply => console.log(reply))
-            .catch(error => console.log(error))
+    socket.on('offline', async (id) => {
+        if (!id) return;
+        const update = {
+            isOnline: false,
+            lastSeen: Date.now()
+        }
+        await User.updateOne({ _id: id }, { $set: update });
+        socket.broadcast.emit('userOffline', id);
 
-        SocketHandler.setUserOffline(id, socket)
+        await redis.del(`sub-${id}`);
     });
 
+    //Notifications
+
+    socket.on('post-created', async (author, postId) => {
+        const batchSize = 1000; // Number of subscribers per batch
+        let page = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+            const subscribers = await Subscription.find({ user: author.id }, { subscriber: 1 })
+                .sort('_id')
+                .skip(page * batchSize)
+                .limit(batchSize)
+                .lean()
+                .exec();
+
+            if (subscribers.length > 0) {
+                const subscriberIds = subscribers.map(sub => sub.subscriber);
+                await subscribersQueue.add('send-notifications', { subscribers: subscriberIds, author, postId });
+                //console.log(`Added batch ${page + 1} to queue:`, subscriberIds);
+                page++;
+            } else {
+                hasMore = false;
+            }
+        }
+
+    });
+
+    socket.on('user-followed', async(data) => {
+        const { userId, follower } = data;
+
+        const payload = {
+            title: 'New follower',
+            body: `${follower.name} followed you.`,
+            url: `${process.env.CLIENT_URL}/app/user/${follower.id}`
+        }
+
+        const user = await User.findById(userId, { subscription: 1 });
+        const subscription = user.subscription;
+
+        if (!subscription) return;
+
+        const newNotification = new Notification({
+            user: userId,
+            fromUser: follower.id,
+            type: 'follow',
+            link: payload.url,
+            description: payload.body,
+            isRead: false,
+        });
+
+        await Promise.all([
+            webpush.sendNotification(subscription, JSON.stringify(payload)),
+            newNotification.save()
+        ]);
+    });
+
+
+    //Chats
     socket.on('joinRoom', (chatId) => {
         socket.join(chatId);
     });
 
-    socket.on('sendMessage', (message) => {
+    socket.on('sendMessage', async ({ message, senderName, receiverId }) => {
         socket.broadcast.emit('newMessageNotification', message);
         socket.to(message.chat).emit('newMessage', message);
+
+        let title, body;
+        if (message.hasText) {
+            title = `${ senderName } sent you a message.`;
+            body = (message.textContent.lenght < 30) ? message.textContent : `${ message.textContent.substring(0, 30) }...`;
+        } else {
+            title = `${ senderName } sent you a file`;
+            body = message.file.name;
+        }
+
+        const payload = {
+            title,
+            body,
+        }
+
+        let sub = await redis.get(`sub-${receiverId.toString()}`);
+
+        if (!sub) {
+            const user = await User.findById(receiverId, { subscription: 1 });
+            sub = user.subscription;
+        }
+
+        if (!sub) return;
+
+        await webpush.sendNotification(JSON.parse(sub), JSON.stringify(payload));
     });
 
     socket.on('openMessage', async (chatId, userId) => {
@@ -60,12 +160,4 @@ io.on('connection', (socket) => {
     socket.on('editMessage', (chatId, messageId, text) => {
         socket.to(chatId).emit('messageEdited', messageId, text);
     });
-
-    //Comments
-    socket.on('comment-created', async (comment) => {
-        const authorSocketId = await client.get(comment.author);
-        if (authorSocketId) {
-            io.to(authorSocketId).emit('new-comment', comment);
-        } 
-    })
 });

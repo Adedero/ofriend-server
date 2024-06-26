@@ -1,8 +1,29 @@
 require('dotenv').config();
 
-const { createClient } = require('redis');
+const Redis = require('ioredis');
 
-const client = createClient({
+const redis = new Redis({
+  host: process.env.REDIS_HOST,
+  password: process.env.REDIS_PASSWORD,
+  port: 16637,
+  connectTimeout: 20000,
+  maxRetriesPerRequest: null
+});
+
+redis.on('connect', () => {
+  console.log('Redis client connected');
+});
+
+
+process.on('SIGINT', () => {
+  redis.disconnect();
+  console.log('Redis client disconnected due to app termination');
+  process.exit(0);
+});
+
+module.exports = redis;
+
+/* const client = createClient({
   password: process.env.REDIS_PASSWORD,
   socket: {
     host: process.env.REDIS_HOST,
@@ -17,9 +38,9 @@ const client = createClient({
     }
   },
   connectTimeout: 20000 //20 seconds
-});
+}); */
 
-client.on('connect', () => {
+/* client.on('connect', () => {
   console.log('Redis client connected');
 });
   
@@ -29,4 +50,4 @@ client.on('error', error => {
 
 const redisConnection = async () => await client.connect();
 
-module.exports = { client, redisConnection };
+module.exports = { client, redisConnection }; */

@@ -4,13 +4,12 @@ const Comment = require('../models/content-reel/comment.model');
 const PostLike = require('../models/content-reel/post-like.model');
 const CommentLike = require('../models/content-reel/comment-like.model');
 const Block = require('../models/content-reel/block.model');
-const Report = require('../models/admin/report.model');
 const Follow = require('../models/content-reel/follow.model');
 const SavedPost = require('../models/content-reel/saved-post.model');
-const eventEmitter = require('../events/notifications.event');
 const checkParams = require('../utils/check-params');
 const mongoose = require('mongoose');
 const Notification = require('../models/notification.model');
+const Subscription = require('../models/content-reel/subscription.model');
 
 
 const UserController = {
@@ -708,12 +707,14 @@ const UserController = {
     const { authorId } = req.params;
     const userId = req.user.id;
     const follow = await Follow.findOne({ user: authorId, follower: userId }).lean();
+    const subscription = await Subscription.fineOne({ user: authorId, subscriber: userId });
 
     if (follow) {
       await Promise.all([
         User.findByIdAndUpdate(authorId, { $inc: { followers: -1 } }),
         User.findByIdAndUpdate(userId, { $inc: { following: -1 } }),
-        Follow.deleteOne({ _id: follow._id })
+        Follow.deleteOne({ _id: follow._id }),
+        subscription && Subscription.deleteOne({ _id: subscription._id })
       ])
       return res.status(200).json({
         success: true,
@@ -729,6 +730,33 @@ const UserController = {
     return res.status(200).json({
       success: true,
       isFollowing: true
+    });
+  },
+
+  //Subscribes or unsubscribes from a user
+  toggleUserSubscribe: async (req, res) => {
+    const { authorId } = req.params;
+    const userId = req.user.id;
+    const sub = await Subscription.findOne({ user: authorId, subscriber: userId }).lean();
+
+    if (sub) {
+      await Promise.all([
+        User.updateOne({ _id: authorId }, { $inc: { subscribers: -1 } }),
+        Subscription.deleteOne({ _id: sub._id })
+      ])
+      return res.status(200).json({
+        success: true,
+        isSubscribed: false
+      });
+    }
+
+    await Promise.all([
+      User.updateOne({ _id: authorId }, { $inc: { subscribers: 1 } }),
+      Subscription.create({ user: authorId, subscriber: userId })
+    ])
+    return res.status(200).json({
+      success: true,
+      isSubscribed: true
     });
   },
 
@@ -790,6 +818,7 @@ const UserController = {
 
       user.isViewingSelf = true;
       user.viewerFollowsUser = false;
+      user.viewerIsSubscribedToUser = false;
 
       return res.status(200).json(user);
     }
@@ -808,7 +837,7 @@ const UserController = {
         message: 'You are not allowed to view this profile.'
       });
     }
-    const [ user, isFollowing ] = await Promise.all([
+    const [ user, isFollowing, isSubscribed ] = await Promise.all([
       User.findById(userId, {
         name: 1,
         isOrg: 1,
@@ -824,6 +853,7 @@ const UserController = {
       }).lean(),
 
       Follow.find({ user: userId, follower: req.user.id }),
+      Subscription.find({ user: userId, subscriber: req.user.id })
     ]);
 
     if (!user) {
@@ -835,7 +865,8 @@ const UserController = {
     }
 
     user.isViewingSelf = false;
-    user.viewerFollowsUser = (isFollowing.length) > 0;
+    user.viewerFollowsUser = (isFollowing.length > 0);
+    user.viewerIsSubscribedToUser = (isSubscribed.length > 0);
 
     return res.status(200).json(user);
   },

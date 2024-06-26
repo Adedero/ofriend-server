@@ -106,7 +106,6 @@ const ChatController = {
                 .lean()
         ]);
         const receiver = chat.participants[0];
-        messages.forEach(message => message.isRead = true)
         messages.reverse();
 
         return res.status(200).json({ receiver, messages });
