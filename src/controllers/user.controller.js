@@ -39,7 +39,7 @@ const UserController = {
   
     const { skip } = req.params;
     const { products } = req.query;
-    checkParams([ skip, products ])
+    checkParams(res, [ skip, products ])
     const limit = 6;
     const userId = req.user.id;
 
@@ -182,7 +182,7 @@ const UserController = {
   editPost: async (req, res) => {
     const { postId } = req.params;
     const { edit } = req.body
-    checkParams([postId, edit]);
+    checkParams(res, [postId, edit]);
     await Post.updateOne({ _id: postId }, { $set: edit });
     return res.status(200).json({
       success: true,
@@ -196,7 +196,7 @@ const UserController = {
   deletePost: async (req, res) => {
     const { postId } = req.params;
     const { repostedPost } = req.query;
-    checkParams([postId]);
+    checkParams(res, [postId]);
     const BATCH_SIZE = 100;
 
     let commentIds = [];
@@ -392,7 +392,7 @@ const UserController = {
   editComment: async (req, res) => {
     const { commentId } = req.params;
     const { edit } = req.body
-    checkParams([commentId, edit]);
+    checkParams(res, [commentId, edit]);
     await Comment.updateOne({ _id: commentId }, { $set: edit });
     return res.status(200).json({
       success: true,
@@ -406,7 +406,7 @@ const UserController = {
     let { commentId, postId } = req.params;
     const { parent } = req.query;
   
-    checkParams([commentId, postId]);
+    checkParams(res, [commentId, postId]);
 
     commentId = mongoose.Types.ObjectId.createFromHexString(commentId);
 
@@ -823,7 +823,7 @@ const UserController = {
       return res.status(200).json(user);
     }
 
-    const blocks = Block.find({
+    const blocks = await Block.find({
       $or: [
         { blocker: req.user.id, blockedUser: userId },
         { blocker: userId, blockedUser: req.user.id }

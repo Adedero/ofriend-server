@@ -3,6 +3,8 @@ const Block = require('../models/content-reel/block.model');
 const Follow = require('../models/content-reel/follow.model')
 const checkParams = require('../utils/check-params');
 const bcrypt = require('bcrypt');
+const mongoose = require('mongoose');
+const Subscription = require('../models/content-reel/subscription.model');
 
 
 const ProfileController = {
@@ -184,7 +186,7 @@ const ProfileController = {
 
     const userId = req.user.id;
     const SKIP = parseInt(skip);
-    const LIMIT = 10;
+    const LIMIT = 30;
     const blocks = await Block.find(
       { blocker: userId }, { blockedUser: 1 }
     )
@@ -194,7 +196,7 @@ const ProfileController = {
 
     const blockedUsers = blocks.map(block => {
       return {
-        id: block._id,
+        id: block.blockedUser._id,
         name: block.blockedUser.name,
         imageUrl: block.blockedUser.imageUrl,
       }
@@ -205,52 +207,100 @@ const ProfileController = {
 
   blockUser: async (req, res) => {
     const { userId } = req.params;
-    checkParams(res, [ userId ]);
 
-    const follows = await Follow.find({
-      $or: [
-        { user: req.user.id, follower: userId },
-        { user: userId, follower: req.user.id }
-      ]
-    });
+    // Check if userId is provided
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'User ID is required'
+      });
+    }
 
-    // Process follow relationships
-    if (follows.length) {
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      // Fetch follows and subscriptions in parallel
+      const [follows, subscriptions] = await Promise.all([
+        Follow.find({
+          $or: [
+            { user: req.user.id, follower: userId },
+            { user: userId, follower: req.user.id }
+          ]
+        }),
+        Subscription.find({
+          $or: [
+            { user: req.user.id, subscriber: userId },
+            { user: userId, subscriber: req.user.id }
+          ]
+        })
+      ]);
+
+      // Process follow relationships
       const userFollowsBlocked = follows.find(follow => follow.follower.toString() === req.user.id.toString());
       const blockedFollowsUser = follows.find(follow => follow.user.toString() === req.user.id.toString());
+      const userSubscribesToBlocked = subscriptions.find(sub => sub.subscriber.toString() === req.user.id.toString());
+      const blockedSubscribesToUser = subscriptions.find(sub => sub.user.toString() === req.user.id.toString());
+
+      const operations = [];
 
       if (userFollowsBlocked) {
-        await Promise.all([
+        operations.push(
           Follow.findByIdAndDelete(userFollowsBlocked._id),
-          User.findByIdAndUpdate(req.user.id, {
-            $inc: { following: -1 }
-          })
-        ]);
+          User.findByIdAndUpdate(req.user.id, { $inc: { following: -1 } })
+        );
       }
 
       if (blockedFollowsUser) {
-        await Promise.all([
+        operations.push(
           Follow.findByIdAndDelete(blockedFollowsUser._id),
-          User.findByIdAndUpdate(req.user.id, {
-            $inc: { followers: -1 }
-          })
-        ]);
+          User.findByIdAndUpdate(req.user.id, { $inc: { followers: -1 } })
+        );
       }
+
+      if (userSubscribesToBlocked) {
+        operations.push(
+          Subscription.deleteOne({ _id: userSubscribesToBlocked._id }),
+          User.updateOne({ _id: userId }, { $inc: { subscribers: -1 } })
+        );
+      }
+
+      if (blockedSubscribesToUser) {
+        operations.push(
+          Subscription.deleteOne({ _id: blockedSubscribesToUser._id }),
+          User.updateOne({ _id: req.user.id }, { $inc: { subscribers: -1 } })
+        );
+      }
+
+      // Execute all operations in parallel
+      if (operations.length > 0) {
+        await Promise.all(operations);
+      }
+
+      // Create a block record
+      await Block.create([{ blocker: req.user.id, blockedUser: userId }]);
+
+      // Commit transaction
+      await session.commitTransaction();
+      return res.status(200).json({
+        success: true,
+        message: 'User successfully blocked'
+      });
+    } catch (error) {
+      await session.abortTransaction();
+      return res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        info: error.message
+      });
+    } finally {
+      session.endSession();
     }
-
-    // Create a block record
-    await Block.create({ blocker: req.user.id, blockedUser: userId });
-
-    // Respond with a success message
-    return res.status(200).json({
-      success: true,
-      message: 'User successfully blocked'
-    });
   },
 
   unblockUser: async (req, res) => {
     const { userId } = req.params;
-    checkParams(res, [userId]);
+    checkParams(res, [userId]);4
+
     await Block.deleteOne({ blocker: req.user.id, blockedUser: userId });
     return res.status(200).json({
       success: true,
@@ -260,7 +310,7 @@ const ProfileController = {
 
   changePassword: async (req, res) => {
     const { oldpassword, newpassword, confirm } = req.body;
-    checkParams([ oldpassword, newpassword, confirm ]);
+    checkParams(res, [ oldpassword, newpassword, confirm ]);
     const userId = req.user.id;
 
     if (confirm !== newpassword) {
@@ -298,7 +348,6 @@ const ProfileController = {
       message: 'Account successfully deleted'
     })
   }
- 
 }
 
 module.exports = ProfileController;
