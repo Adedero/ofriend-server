@@ -192,10 +192,12 @@ const ProfileController = {
     )
       .skip(SKIP)
       .limit(LIMIT)
-      .populate('blockedUser', 'name imageUrl');
+      .populate('blockedUser', 'name imageUrl')
+      .lean();
 
     const blockedUsers = blocks.map(block => {
       return {
+        blockId: block._id,
         id: block.blockedUser._id,
         name: block.blockedUser.name,
         imageUrl: block.blockedUser.imageUrl,
@@ -298,10 +300,10 @@ const ProfileController = {
   },
 
   unblockUser: async (req, res) => {
-    const { userId } = req.params;
-    checkParams(res, [userId]);4
+    const { blockId } = req.params;
+    checkParams(res, [blockId]);4
 
-    await Block.deleteOne({ blocker: req.user.id, blockedUser: userId });
+    await Block.deleteOne({ _id: blockId });
     return res.status(200).json({
       success: true,
       message: 'User successfully unblocked'

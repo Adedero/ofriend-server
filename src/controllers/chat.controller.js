@@ -1,6 +1,7 @@
 const User = require('../models/user.model');
 const Chat = require('../models/chat/chat.model');
 const Message = require('../models/chat/message.model');
+const Block = require('../models/content-reel/block.model');
 const checkParams = require('../utils/check-params');
 const mongoose = require('mongoose');
 const { bucket } = require('../firebase/firebase-admin');
@@ -103,9 +104,27 @@ const ChatController = {
                     path: 'quotedMessage',
                     select: 'sender hasText textContent hasFile file isDeleted',
                 })
-                .lean()
+                .lean(),
         ]);
         const receiver = chat.participants[0];
+
+        const blocks = await Block.find({
+            $or: [
+                { blocker: req.user.id, blockedUser: receiver._id },
+                { blocker: receiver.id, blockedUser: req.user.id}
+            ]
+        }).lean();
+
+        if (blocks.length) {
+            const hasUserBlocked = blocks.find(block => block.blocker.toString() === req.user.id.toString() );
+            const isUserBlocked = blocks.find(block => block.blockedUser.toString() === req.user.id.toString());
+
+            if (hasUserBlocked) {
+                receiver.isBlocked = true;
+                receiver.blockId = hasUserBlocked._id;
+            }
+            if (isUserBlocked) receiver.hasBlocked = true;
+        }
         messages.reverse();
 
         return res.status(200).json({ receiver, messages });

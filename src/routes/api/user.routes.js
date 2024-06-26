@@ -62,6 +62,14 @@ Router.put('/toggle-user-follow/:authorId', verifyAuth, UserController.toggleUse
 //Subscribes or unsubscribes from a user
 Router.put('/toggle-user-subscribe/:authorId', verifyAuth, UserController.toggleUserSubscribe);
 
+//View users subscribed to
+Router.get('/get-subcriptions/:userId', verifyAuth, UserController.getSubcriptions);
+
+
+//Delete a sub by Id
+Router.delete('/delete-subscription/:subId/:userId', verifyAuth, UserController.deleteSubscription);
+
+
 //Gets saved posts of a user
 Router.get('/get-saved-posts/:skip', verifyAuth, UserController.getSavedPosts);
 
@@ -119,7 +127,8 @@ Router.get('/view-blocked-users', verifyAuth, ProfileController.getBlockedUsers)
 Router.post('/block-user/:userId', verifyAuth, ProfileController.blockUser);
 
 //unblock user
-Router.post('/unblock-user/:userId', verifyAuth, ProfileController.unblockUser);
+Router.post('/unblock-user/:blockId', verifyAuth, ProfileController.unblockUser);
+
 
 //Change password
 Router.put('/change-password', verifyAuth, ProfileController.changePassword)

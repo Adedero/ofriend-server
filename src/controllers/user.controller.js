@@ -326,7 +326,7 @@ const UserController = {
     }
     const user = req.user;
     const postAuthorId = comment.postAuthor;
-    const commentAuthorId = comment.commentAuthor;
+    const commentAuthorId = user.id;
 
     const processedComment = {
       author: user.id,
@@ -706,13 +706,16 @@ const UserController = {
   toggleUserFollow: async (req, res) => {
     const { authorId } = req.params;
     const userId = req.user.id;
-    const follow = await Follow.findOne({ user: authorId, follower: userId }).lean();
-    const subscription = await Subscription.fineOne({ user: authorId, subscriber: userId });
+
+    const [follow, subscription] = await Promise.all([
+      Follow.findOne({ user: authorId, follower: userId }).lean(),
+      Subscription.findOne({ user: authorId, subscriber: userId }).lean()
+    ]);
 
     if (follow) {
       await Promise.all([
-        User.findByIdAndUpdate(authorId, { $inc: { followers: -1 } }),
-        User.findByIdAndUpdate(userId, { $inc: { following: -1 } }),
+        User.updateOne({ _id: authorId }, { $inc: { followers: -1, subscribers: -1 } }),
+        User.updateOne({ _id: userId }, { $inc: { following: -1 } }),
         Follow.deleteOne({ _id: follow._id }),
         subscription && Subscription.deleteOne({ _id: subscription._id })
       ])
@@ -723,8 +726,8 @@ const UserController = {
     }
 
     await Promise.all([
-      User.findByIdAndUpdate(authorId, { $inc: { followers: 1 } }),
-      User.findByIdAndUpdate(userId, { $inc: { following: 1 } }),
+      User.updateOne({ _id: authorId }, { $inc: { followers: 1 } }),
+      User.updateOne({ _id: userId }, { $inc: { following: 1 } }),
       Follow.create({ user: authorId, follower: userId })
     ])
     return res.status(200).json({
@@ -757,6 +760,69 @@ const UserController = {
     return res.status(200).json({
       success: true,
       isSubscribed: true
+    });
+  },
+
+  //Gets lists of subscriptions
+  getSubcriptions: async (req, res) => {
+    const { skip, type } = req.query;
+    const skipInt = parseInt(skip, 10);
+    const limit = 10;
+
+    if (type === 'subscribers') {
+      const subscriptions = await Subscription.find(
+        { user: req.user.id }, { subscriber: 1 })
+        .skip(skipInt)
+        .limit(limit)
+        .populate({ path: 'subscriber', select: 'name imageUrl' })
+        .lean();
+
+      const subscribers = subscriptions.map(sub => {
+        return {
+          subId: sub._id,
+          id: sub.subscriber._id,
+          name: sub.subscriber.name,
+          imageUrl: sub.subscriber.imageUrl
+        }
+      });
+
+      return res.status(200).json(subscribers);
+    }
+
+    if (type === 'subscribedTo') {
+      const subscriptions = await Subscription.find(
+        { subscriber: req.user.id }, { user: 1 })
+        .skip(skipInt)
+        .limit(limit)
+        .populate({ path: 'user', select: 'name imageUrl' })
+        .lean();
+
+      const subscribedToUsers = subscriptions.map(sub => {
+        return {
+          subId: sub._id,
+          id: sub.user._id,
+          name: sub.user.name,
+          imageUrl: sub.user.imageUrl
+        }
+      });
+
+      return res.status(200).json(subscribedToUsers);
+    }
+  },
+
+  //Delete subscription
+  deleteSubscription: async (req, res) => {
+    const { subId, userId } = req.params;
+    checkParams(res, [subId, userId]);
+
+    await Promise.all([
+      User.updateOne({ _id: userId }, { $inc: { subscribers: -1 } }),
+      Subscription.deleteOne({ _id: subId })
+    ]);
+
+    return res.status(200).json({
+      success: true,
+      isSubscribed: false
     });
   },
 
