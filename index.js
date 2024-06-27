@@ -16,16 +16,11 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL,
+    origin: "*",
     methods: ["GET", "POST"]
   }
 });
 
-io.engine.on("headers", (headers, req) => {
-  headers["Access-Control-Allow-Origin"] = process.env.CLIENT_URL;
-  headers["Access-Control-Allow-Headers"] = "origin, x-requested-with, content-type"
-  headers["Access-Control-Allow-Methods"] = "PUT, GET, POST, DELETE, OPTIONS"
-})
 module.exports = io;
 
 require('./src/socket/socket');
