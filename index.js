@@ -29,7 +29,7 @@ module.exports = io;
 
 require('./src/socket/socket');
 
-app.set("trust proxy" , 1);
+//app.set("trust proxy" , 1);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
