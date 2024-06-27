@@ -14,11 +14,15 @@ const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
+app.use(cors({
+  origin: process.env.CLIENT_URL
+}));
+
+
 const io = new Server(server, {
   cors: {
     origin: /^https:\/\/ofriend\.vercel\.app.*/,
     methods: ["GET", "POST"],
-    allowedHeaders: 'Content-Type,Access-Control-Allow-Origin'
   }
 });
 
@@ -30,9 +34,6 @@ app.set("trust proxy" , 1);
 
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(cors({
-  origin: process.env.CLIENT_URL
-}));
 
 app.use(passport.initialize());
 
