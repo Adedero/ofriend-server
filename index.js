@@ -16,8 +16,9 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
+    origin: /^https:\/\/ofriend\.vercel\.app.*/,
+    methods: ["GET", "POST"],
+    allowedHeaders: 'Content-Type,Access-Control-Allow-Origin'
   }
 });
 
