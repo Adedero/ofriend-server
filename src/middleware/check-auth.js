@@ -21,7 +21,7 @@ const verifyAuth = async (req, res, next) => {
     }
 
     if (!user.isVerified) {
-      return res.status(403).json({
+      return res.status(401).json({
         success: false,
         authMessage: true,
         info: 'Forbidden',

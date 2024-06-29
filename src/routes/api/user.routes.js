@@ -10,6 +10,9 @@ Router.get('/get-full-profile', verifyAuth, UserController.getFullProfile);
 //Gets posts for the content reel
 Router.get('/content-reel/:skip', verifyAuth, UserController.getContentReel);
 
+//Get users to mention
+Router.get('/get-mentions/:search', verifyAuth, UserController.getUsersToMention);
+
 //Gets followers and following for the sidebar in the home page
 Router.get('/followers-and-following', verifyAuth, UserController.getFollowersAndFollowing);
 

@@ -123,6 +123,61 @@ const UserController = {
     
   },
 
+  //Get users to mention
+  getUsersToMention: async (req, res) => {
+    const text = req.params.search;
+    const { skip, limit } = req.query;
+    checkParams(res, [ text, limit ]);
+
+    const users = await User.aggregate([
+      {
+        $match: {
+          _id: { $ne: req.user._id },
+          name: { $regex: text, $options: 'i' }
+        }
+      },
+      {
+        $lookup: {
+          from: 'blocks',
+          let: { userId: '$_id' },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $or: [
+                    { $and: [{ $eq: ['$blocker', req.user.id] }, { $eq: ['$blockedUser', '$$userId'] }] },
+                    { $and: [{ $eq: ['$blocker', '$$userId'] }, { $eq: ['$blockedUser', req.user.id] }] }
+                  ]
+                }
+              }
+            }
+          ],
+          as: 'blockInfo'
+        }
+      },
+      {
+        $match: {
+          'blockInfo.0': { $exists: false } 
+        }
+      },
+      {
+        $skip: Number(skip)
+      },
+      {
+        $limit: Number(limit)
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          imageUrl: 1
+        }
+      }
+    ]);
+
+    return res.status(200).json(users);
+  },
+
   //Gets 3 followers and 3 following for the home page
   getFollowersAndFollowing: async (req, res) => {
     const userId = req.user.id;
