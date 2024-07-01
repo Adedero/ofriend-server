@@ -38,7 +38,7 @@ const subscriptionWorker = new Worker('post-subscribers', async (job) => {
 
     await Promise.all([
       webpush.sendNotification(subscription, JSON.stringify(payload)),
-      await newNotification.save()
+      newNotification.save()
     ]);
   }
 }, { connection: redis });

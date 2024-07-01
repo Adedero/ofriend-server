@@ -5,7 +5,7 @@ const { subscribersQueue } = require('../services/post-notification.service');
 const webpush = require('../services/push-notifications');
 const Notification = require('../models/notification.model');
 const redis = require('../config/redis.config');
-
+const webpush = require('./push-notifications');
 
 
 const io = require('../../index');
@@ -47,7 +47,41 @@ io.on('connection', (socket) => {
 
     //Notifications
 
-    socket.on('post-created', async (author, postId) => {
+    socket.on('post-created', async (author, post) => {
+        const mentions = post.mentions;
+
+        if (mentions.length > 0) {
+            const mentionedUsersIds = new Set(mentions.map(mention => mention.id));
+            const mentionedUsers = await User.find({ _id: { $in: [...mentionedUsersIds] } }, { subscription: 1 });
+
+            const payload = {
+                title: 'Mentions',
+                body: `${post.author.name} mentioned you in a post.`,
+                url: `${process.env.CLIENT_URL}/app/post/${post._id}`
+            }
+
+            const notifications = mentionedUsers.map(user => ({
+                user: user._id,
+                fromUser: post.author.id,
+                type: 'mention',
+                link: payload.url,
+                description: payload.body,
+                isRead: false,
+                post: post._id,
+            }));
+
+            await Notification.insertMany(notifications);
+
+            // Send web push notifications concurrently
+            const webPushPromises = mentionedUsers.map(async user => {
+                if (user.subscription) {
+                    await webpush.sendNotification(user.subscription, JSON.stringify(payload));
+                }
+            });
+
+            await Promise.all(webPushPromises);
+        }
+                
         const batchSize = 1000; // Number of subscribers per batch
         let page = 0;
         let hasMore = true;
@@ -62,7 +96,7 @@ io.on('connection', (socket) => {
 
             if (subscribers.length > 0) {
                 const subscriberIds = subscribers.map(sub => sub.subscriber);
-                await subscribersQueue.add('send-notifications', { subscribers: subscriberIds, author, postId });
+                await subscribersQueue.add('send-notifications', { subscribers: subscriberIds, author, postId: post._id });
                 //console.log(`Added batch ${page + 1} to queue:`, subscriberIds);
                 page++;
             } else {

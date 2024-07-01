@@ -37,10 +37,10 @@ const UserController = {
   //Second iteration
   getContentReel: async (req, res) => {
   
-    const { skip } = req.params;
+    let { skip, limit } = req.params;
     const { products } = req.query;
-    checkParams(res, [ skip, products ])
-    const limit = 6;
+    checkParams(res, [limit, products ])
+    skip = skip ? skip : 0
     const userId = req.user.id;
 
     // Fetch posts with the author details

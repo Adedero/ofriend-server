@@ -8,7 +8,7 @@ const ChatController = require('../../controllers/chat.controller');
 //Gets full profile
 Router.get('/get-full-profile', verifyAuth, UserController.getFullProfile);
 //Gets posts for the content reel
-Router.get('/content-reel/:skip', verifyAuth, UserController.getContentReel);
+Router.get('/content-reel/:skip/:limit', verifyAuth, UserController.getContentReel);
 
 //Get users to mention
 Router.get('/get-mentions/:search', verifyAuth, UserController.getUsersToMention);
