@@ -5,7 +5,6 @@ const { subscribersQueue } = require('../services/post-notification.service');
 const webpush = require('../services/push-notifications');
 const Notification = require('../models/notification.model');
 const redis = require('../config/redis.config');
-const webpush = require('./push-notifications');
 
 
 const io = require('../../index');
