@@ -163,6 +163,14 @@ Router.delete('/clear-messages/:chatId', verifyAuth, ChatController.clearMessage
 //Delete chat
 Router.delete('/delete-conversation/:chatId', verifyAuth, ChatController.deleteConversation);
 
+//Get notifications
+Router.get('/get-notifications', verifyAuth, UserController.getNotifications);
+
+//Clear all notifications
+Router.delete('/clear-all-notifications', verifyAuth, UserController.clearAllNotifications);
+
+Router.delete('/delete-notification/:id', verifyAuth, UserController.deleteNotification)
+
 
 
 

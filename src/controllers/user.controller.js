@@ -10,6 +10,8 @@ const checkParams = require('../utils/check-params');
 const mongoose = require('mongoose');
 const Notification = require('../models/notification.model');
 const Subscription = require('../models/content-reel/subscription.model');
+const webpush = require('../services/push-notifications');
+
 
 
 const UserController = {
@@ -398,10 +400,20 @@ const UserController = {
           message: 'Must provide a parent comment for this reply'
         });
       }
+
+      const userToAlert = await User.findById(postAuthorId, { subscription: 1 }).lean();
+      const sub = userToAlert.subscription;
+
+      const payload = {
+        title: 'Replies',
+        body: `${user.name} replied to your comment on a post.`,
+        url: `/app/post/${comment.post}`
+      }
       await Promise.all([
         newComment.save(),
         Post.updateOne({ _id: comment.post }, { $inc: { comments: 1 } }),
         Comment.updateOne({ _id: processedComment.parentComment }, { $inc: { replies: 1 } }),
+        sub && webpush.sendNotification(sub, JSON.stringify(payload))
       ]);
 
       await Notification.create({
@@ -411,6 +423,8 @@ const UserController = {
         isRead: false,
         post: comment.post,
         comment: newComment._id,
+        link: `app/post/${comment.post}`,
+        description: `${user.name} replied to your comment on a post.`
       });
 
       return res.status(200).json({
@@ -421,9 +435,19 @@ const UserController = {
       });
     }
 
+    const userToAlert = await User.findById(postAuthorId, { subscription: 1 }).lean();
+    const sub = userToAlert.subscription;
+
+    const payload = {
+      title: 'Comments',
+      body: `${user.name} commented on your post.`,
+      url: `/app/post/${comment.post}`
+    }
+
     await Promise.all([
       newComment.save(),
-      Post.updateOne({ _id: comment.post }, { $inc: { comments: 1 } })
+      Post.updateOne({ _id: comment.post }, { $inc: { comments: 1 } }),
+      sub && webpush.sendNotification(sub, JSON.stringify(payload))
     ]);
 
     await Notification.create({
@@ -433,6 +457,8 @@ const UserController = {
       isRead: false,
       post: comment.post,
       comment: newComment._id,
+      description: payload.body,
+      link: payload.url
     });
 
     return res.status(200).json({
@@ -1312,6 +1338,39 @@ const UserController = {
     follows = follows.filter(follow => follow[type === 'followers' ? 'follower' : 'user'] !== null);
 
     return res.status(200).json(follows);
+  },
+
+  getNotifications: async (req, res) => {
+    const userId = req.user.id;
+    const { skip, limit } = req.query;
+
+    const [, notifications] = await Promise.all([
+      Notification.updateMany(
+        { user: userId, isRead: false },
+        { $set: { isRead: true } }
+      ),
+
+      Notification.find({ user: userId })
+        .skip(skip)
+        .limit(limit)
+        .populate('fromUser', 'name imageUrl')
+        .lean()
+    ]);
+    
+    return res.status(200).json(notifications);
+  },
+
+  clearAllNotifications: async (req, res) => {
+    await Notification.deleteMany({ user: req.user.id });
+    return res.status(200).json({ success: true, message: 'All notifications cleared.' });
+  },
+
+  deleteNotification: async (req, res) => {
+    const { id } = req.params;
+    checkParams(res, [id]);
+
+    await Notification.deleteOne({ _id: id });
+    return res.status(200).json({ success: true, message: 'Notification deleted' });
   }
 }
 

@@ -16,7 +16,7 @@ const subscriptionWorker = new Worker('post-subscribers', async (job) => {
   const payload = {
     title: 'New post',
     body: `${author.name} made a new post.`,
-    url: `${process.env.CLIENT_URL}/app/post/${postId}`
+    url: `/app/post/${postId}`
   }
 
 

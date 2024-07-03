@@ -55,13 +55,13 @@ io.on('connection', (socket) => {
 
             const payload = {
                 title: 'Mentions',
-                body: `${post.author.name} mentioned you in a post.`,
-                url: `${process.env.CLIENT_URL}/app/post/${post._id}`
+                body: `${author.name} mentioned you in a post.`,
+                url: `/app/post/${post._id}`
             }
 
             const notifications = mentionedUsers.map(user => ({
                 user: user._id,
-                fromUser: post.author.id,
+                fromUser: post.author,
                 type: 'mention',
                 link: payload.url,
                 description: payload.body,
@@ -111,7 +111,7 @@ io.on('connection', (socket) => {
         const payload = {
             title: 'New follower',
             body: `${follower.name} followed you.`,
-            url: `${process.env.CLIENT_URL}/app/user/${follower.id}`
+            url: `$/app/user/${follower.id}`
         }
 
         const user = await User.findById(userId, { subscription: 1 });

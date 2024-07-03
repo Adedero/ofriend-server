@@ -47,6 +47,7 @@ const NotificationSchema = new mongoose.Schema({
 //NotificationSchema.set('timestamps', true);
 
 NotificationSchema.pre('find', function (next) {
+  this.isRead = true;
   this.sort({ createdAt: -1 });
   next();
 });
