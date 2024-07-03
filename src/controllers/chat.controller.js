@@ -97,7 +97,7 @@ const ChatController = {
                     select: 'name bio imageUrl isOnline lastSeen'
                 }).lean(),
 
-            Message.find({ chat: chatId })
+            Message.find({ chat: chatId, isVisibleTo: { $in: [req.user.id ] } })
                 .skip(skip)
                 .limit(limit)
                 .populate({
@@ -138,7 +138,8 @@ const ChatController = {
             quotedMessage: message.quotedMessage._id,
             sender: req.user.id,
             isSent: true,
-            readBy: [req.user.id]
+            readBy: [req.user.id],
+            isVisibleTo: [req.user.id, message.receiver]
         });
 
         await newMessage.save();
@@ -192,6 +193,18 @@ const ChatController = {
         return res.status(200).json({
             success: true,
             message: 'Message successfully edited'
+        });
+    },
+
+    removeMessageFromView: async (req, res) => {
+        const { messageId } = req.params;
+        checkParams(res, [ messageId ]);
+
+        await Message.updateOne({ _id: messageId }, { $pull: { isVisibleTo: req.user.id } });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Message successfully removed from view'
         });
     },
 

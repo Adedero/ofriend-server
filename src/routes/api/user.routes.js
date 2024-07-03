@@ -157,6 +157,9 @@ Router.put('/delete-message/:id', verifyAuth, ChatController.deleteMessage);
 //Edit message
 Router.put('/edit-message/:id', verifyAuth, ChatController.editMessage);
 
+//Remove message from view
+Router.put('/remove-deleted-message-from-view/:messageId', verifyAuth, ChatController.removeMessageFromView);
+
 //Clear messages
 Router.delete('/clear-messages/:chatId', verifyAuth, ChatController.clearMessages);
 

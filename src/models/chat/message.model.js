@@ -55,6 +55,13 @@ const MessageSchema = new mongoose.Schema({
       ref: 'User'
     }
   ],
+  isVisibleTo: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      index: true
+    }
+  ],
   isReplying: {
     type: Boolean,
     default: false
