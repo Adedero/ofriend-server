@@ -97,7 +97,7 @@ const ChatController = {
                     select: 'name bio imageUrl isOnline lastSeen'
                 }).lean(),
 
-            Message.find({ chat: chatId, isVisibleTo: { $in: [req.user.id ] } })
+            Message.find({ chat: chatId, isVisibleTo: { $in: [req.user._id] } })
                 .skip(skip)
                 .limit(limit)
                 .populate({
@@ -116,7 +116,7 @@ const ChatController = {
         }).lean();
 
         if (blocks.length) {
-            const hasUserBlocked = blocks.find(block => block.blocker.toString() === req.user.id.toString() );
+            const hasUserBlocked = blocks.find(block => block.blocker.toString() === req.user.id.toString());
             const isUserBlocked = blocks.find(block => block.blockedUser.toString() === req.user.id.toString());
 
             if (hasUserBlocked) {

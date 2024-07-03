@@ -27,6 +27,7 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "socket.io": "^4.7.5",
+    "string-strip-html": "^8.5.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

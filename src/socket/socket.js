@@ -5,6 +5,7 @@ const { subscribersQueue } = require('../services/post-notification.service');
 const webpush = require('../services/push-notifications');
 const Notification = require('../models/notification.model');
 const redis = require('../config/redis.config');
+const { stripHtml } = require("string-strip-html");
 
 
 const io = require('../../index');
@@ -144,10 +145,13 @@ io.on('connection', (socket) => {
         socket.broadcast.emit('newMessageNotification', message);
         socket.to(message.chat).emit('newMessage', message);
 
+        if (!receiverId) return;
+
         let title, body;
         if (message.hasText) {
+            const textContent = stripHtml(message.textContent).result
             title = `${ senderName } sent you a message.`;
-            body = (message.textContent.lenght < 30) ? message.textContent : `${ message.textContent.substring(0, 30) }...`;
+            body = (textContent.length < 30) ? textContent : `${ textContent.substring(0, 30) }...`;
         } else {
             title = `${ senderName } sent you a file`;
             body = message.file.name;
