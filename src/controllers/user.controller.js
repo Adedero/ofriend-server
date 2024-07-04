@@ -381,16 +381,24 @@ const UserController = {
         message: 'Your comment cannot be empty.'
       });
     }
+
     const user = req.user;
     const postAuthorId = comment.postAuthor;
     const commentAuthorId = user.id;
+    const isCommentingOnOwnPost = postAuthorId === user.id;
+    const isReplyingToOwnComment = commentAuthorId === user.id;
 
     const processedComment = {
       author: user.id,
       ...comment
-    }
+    };
 
     const newComment = new Comment(processedComment);
+
+    const commonActions = [
+      newComment.save(),
+      Post.updateOne({ _id: comment.post }, { $inc: { comments: 1 } })
+    ];
 
     if (processedComment.isReply) {
       if (!processedComment.parentComment) {
@@ -401,66 +409,60 @@ const UserController = {
         });
       }
 
+      commonActions.push(Comment.updateOne({ _id: processedComment.parentComment }, { $inc: { replies: 1 } }));
+
+      if (!isReplyingToOwnComment) {
+        const userToAlert = await User.findById(postAuthorId, { subscription: 1 }).lean();
+        const sub = userToAlert.subscription;
+
+        const payload = {
+          title: 'Replies',
+          body: `${user.name} replied to your comment on a post.`,
+          url: `/app/post/${comment.post}`
+        };
+
+        if (sub) {
+          commonActions.push(webpush.sendNotification(sub, JSON.stringify(payload)));
+        }
+
+        commonActions.push(Notification.create({
+          user: postAuthorId,
+          fromUser: user.id,
+          type: 'reply',
+          isRead: false,
+          post: comment.post,
+          comment: newComment._id,
+          link: payload.url,
+          description: payload.body
+        }));
+      }
+    } else if (!isCommentingOnOwnPost) {
       const userToAlert = await User.findById(postAuthorId, { subscription: 1 }).lean();
       const sub = userToAlert.subscription;
 
       const payload = {
-        title: 'Replies',
-        body: `${user.name} replied to your comment on a post.`,
+        title: 'Comments',
+        body: `${user.name} commented on your post.`,
         url: `/app/post/${comment.post}`
-      }
-      await Promise.all([
-        newComment.save(),
-        Post.updateOne({ _id: comment.post }, { $inc: { comments: 1 } }),
-        Comment.updateOne({ _id: processedComment.parentComment }, { $inc: { replies: 1 } }),
-        sub && webpush.sendNotification(sub, JSON.stringify(payload))
-      ]);
+      };
 
-      await Notification.create({
-        user: commentAuthorId,
+      if (sub) {
+        commonActions.push(webpush.sendNotification(sub, JSON.stringify(payload)));
+      }
+
+      commonActions.push(Notification.create({
+        user: postAuthorId,
         fromUser: user.id,
-        type: 'reply',
+        type: 'comment',
         isRead: false,
         post: comment.post,
         comment: newComment._id,
-        link: `app/post/${comment.post}`,
-        description: `${user.name} replied to your comment on a post.`
-      });
-
-      return res.status(200).json({
-        success: true,
-        info: 'Comment created',
-        message: 'Your comment has been created successfully.',
-        comment: newComment
-      });
+        link: payload.url,
+        description: payload.body
+      }));
     }
 
-    const userToAlert = await User.findById(postAuthorId, { subscription: 1 }).lean();
-    const sub = userToAlert.subscription;
-
-    const payload = {
-      title: 'Comments',
-      body: `${user.name} commented on your post.`,
-      url: `/app/post/${comment.post}`
-    }
-
-    await Promise.all([
-      newComment.save(),
-      Post.updateOne({ _id: comment.post }, { $inc: { comments: 1 } }),
-      sub && webpush.sendNotification(sub, JSON.stringify(payload))
-    ]);
-
-    await Notification.create({
-      user: postAuthorId,
-      fromUser: user.id,
-      type: 'comment',
-      isRead: false,
-      post: comment.post,
-      comment: newComment._id,
-      description: payload.body,
-      link: payload.url
-    });
-
+    await Promise.all(commonActions);
     return res.status(200).json({
       success: true,
       info: 'Comment created',
@@ -491,7 +493,7 @@ const UserController = {
 
     commentId = mongoose.Types.ObjectId.createFromHexString(commentId);
 
-    const BATCH_SIZE = 100;
+    const BATCH_SIZE = 1000;
 
     //Delete replies of comment if it has any
     let replyIds = [];
