@@ -13,6 +13,9 @@ Router.get('/content-reel/:skip/:limit', verifyAuth, UserController.getContentRe
 //Get users to mention
 Router.get('/get-mentions/:search', verifyAuth, UserController.getUsersToMention);
 
+//Search posts or products
+Router.get('/search-posts-or-products/:item/:search', verifyAuth, UserController.searchPostsOrProducts);
+
 //Gets followers and following for the sidebar in the home page
 Router.get('/followers-and-following', verifyAuth, UserController.getFollowersAndFollowing);
 

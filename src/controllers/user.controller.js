@@ -180,6 +180,30 @@ const UserController = {
     return res.status(200).json(users);
   },
 
+  searchPostsOrProducts: async (req, res) => {
+    const { item, search } = req.params;
+    const { skip, limit } = req.query;
+    checkParams(res, [ item, search, limit ]);
+
+    const items = await Post.find({
+      isProduct: item === 'product',
+      textContent: { $regex: search, $options: 'i' }
+    })
+    .skip(skip)
+    .limit(limit)
+    .populate('author', 'name imageUrl')
+    .populate({
+      path: 'repostedPost',
+      populate: {
+        path: 'author',
+        select: 'name imageUrl'
+      }
+    })
+    .lean();
+
+    return res.status(200).json(items);
+  },
+
   //Gets 3 followers and 3 following for the home page
   getFollowersAndFollowing: async (req, res) => {
     const userId = req.user.id;
