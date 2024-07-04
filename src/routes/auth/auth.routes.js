@@ -227,7 +227,7 @@ Router.post('/sign-in', async (req, res, next) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email: email });
   if (!user) {
-    return res.status(404).json({
+    return res.status(401).json({
       success: false,
       info: 'Invalid email',
       message: 'Email address not found.'
