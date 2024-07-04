@@ -65,6 +65,17 @@ const CommentSchema = new mongoose.Schema({
     required: true,
     default: false
   },
+  mentions: [
+    {
+      id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+      },
+      name: {
+        type: String
+      }
+    }
+  ]
 });
 
 CommentSchema.set('timestamps', true);
