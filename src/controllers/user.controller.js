@@ -553,7 +553,7 @@ const UserController = {
     const limitInt = parseInt(limit, 10);
     const skipInt = parseInt(skip, 10);
 
-    if (isNaN(skipInt) || isNaN(limitInt) || limitInt > 5) {
+    if (isNaN(skipInt) || isNaN(limitInt)) {
       return res.status(401).json({
         success: false,
         info: 'Bad request',
