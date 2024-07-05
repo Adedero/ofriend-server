@@ -935,12 +935,12 @@ const UserController = {
 
   //Get saved posts
   getSavedPosts: async (req, res) => {
-    const { skip } = req.query;
+    const { skip, limit } = req.query;
     const skipInt = parseInt(skip, 10);
     const savedPosts = await SavedPost.find(
       { user: req.user.id }, { post: 1, createdAt: 1 })
       .skip(skipInt)
-      .limit(8)
+      .limit(limit)
       .populate({
         path: 'post',
         select: 'hasText textContent hasMedia media isReposting',
@@ -950,10 +950,7 @@ const UserController = {
         }
       });
 
-    return res.status(200).json({
-      success: true,
-      savedPosts
-    });
+    return res.status(200).json(savedPosts);
   },
 
   //Gets user profile

@@ -77,7 +77,7 @@ Router.delete('/delete-subscription/:subId/:userId', verifyAuth, UserController.
 
 
 //Gets saved posts of a user
-Router.get('/get-saved-posts/:skip', verifyAuth, UserController.getSavedPosts);
+Router.get('/get-saved-posts', verifyAuth, UserController.getSavedPosts);
 
 //Gets user profile
 Router.get('/get-user-profile/:userId', verifyAuth, UserController.getUserProfile);
