@@ -28,7 +28,8 @@ const ChatController = {
             ...msg,
             chat: existingChat._id,
             sender: req.user.id,
-            readBy: [req.user.id]
+            readBy: [req.user.id],
+            isVisibleTo: [req.user.id, receiver]
         });
 
         existingChat.lastMessage = newMessage._id;
