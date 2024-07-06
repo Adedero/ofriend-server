@@ -50,4 +50,4 @@ app.get('/', (req, res) => res.send({
   location: 'Nigeria',
 }));
 
-server.listen(PORT, () => console.log(`Ofriend server started on http://localhost:${PORT}`));
+server.listen(PORT, () => console.log(`Ofriend server started on port ${PORT}`));
