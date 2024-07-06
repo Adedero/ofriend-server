@@ -1,10 +1,21 @@
 require('dotenv').config();
-const redis = require('../config/redis.config');
+const Redis = require('ioredis');
+
+//const redis = require('../config/redis.config');
 const webpush = require('./push-notifications');
 const User = require('../models/user.model');
 const Notification = require('../models/notification.model');
 
 const { Queue, Worker } = require('bullmq');
+
+const redis = process.env.NODE_ENV === 'production' ?
+  require('../config/redis.config') :
+  new Redis({
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    connectTimeout: 20000,
+    maxRetriesPerRequest: null,
+  })
 
 const subscribersQueue = new Queue('post-subscribers', {
   connection: redis
