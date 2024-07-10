@@ -11,6 +11,7 @@ const mongoose = require('mongoose');
 const Notification = require('../models/notification.model');
 const Subscription = require('../models/content-reel/subscription.model');
 const webpush = require('../services/push-notifications');
+const verifyId = require('../utils/validate-object-id');
 
 
 
@@ -18,6 +19,7 @@ const UserController = {
   //Gets user full profile
   getFullProfile: async (req, res) => {
     const userId = req.user.id;
+
     const user = await User.findById(userId, {
       imageUrl: 0,
       bannerImageUrl: 0,
@@ -262,6 +264,8 @@ const UserController = {
   //Edit podt
   editPost: async (req, res) => {
     const { postId } = req.params;
+    verifyId(res, postId);
+
     const { edit } = req.body
     checkParams(res, [postId, edit]);
     await Post.updateOne({ _id: postId }, { $set: edit });
@@ -276,6 +280,8 @@ const UserController = {
   //Deletes a post
   deletePost: async (req, res) => {
     const { postId } = req.params;
+    verifyId(res, postId);
+
     const { repostedPost } = req.query;
     checkParams(res, [postId]);
     const BATCH_SIZE = 100;
@@ -327,6 +333,7 @@ const UserController = {
   //Gets a post
   getPost: async (req, res) => {
     const { postId } = req.params;
+    verifyId(res, postId);
     const userId = req.user.id;
 
     if (!postId) {
@@ -498,6 +505,7 @@ const UserController = {
   //Edit comment
   editComment: async (req, res) => {
     const { commentId } = req.params;
+    verifyId(res, commentId);
     const { edit } = req.body
     checkParams(res, [commentId, edit]);
     await Comment.updateOne({ _id: commentId }, { $set: edit });
@@ -511,6 +519,10 @@ const UserController = {
   //Delete comment
   deleteComment: async (req, res) => {
     let { commentId, postId } = req.params;
+
+    verifyId(res, commentId);
+    verifyId(res, postId);
+
     const { parent } = req.query;
   
     checkParams(res, [commentId, postId]);
@@ -956,6 +968,7 @@ const UserController = {
   //Gets user profile
   getUserProfile: async (req, res) => {
     const { userId } = req.params;
+    verifyId(res, userId);
     if (!userId) {
       return res.status(400).json({
         success: false,
@@ -1088,7 +1101,7 @@ const UserController = {
       });
     }
 
-    await User.findByIdAndUpdate(req.user.id, { $set: { bannerImageUrl: imageUrl } });
+    await User.updateOne({ _id: req.user._id}, { $set: { bannerImageUrl: imageUrl } });
     return res.status(200).json({
       success: true,
       message: 'Banner image successfully changed'
@@ -1097,6 +1110,7 @@ const UserController = {
 
   getUserPosts: async (req, res) => {
     const { authorId, skip } = req.params;
+
     if (!authorId) {
       return res.status(400).json({
         success: false,
@@ -1104,6 +1118,7 @@ const UserController = {
         message: 'No user ID provided.'
       });
     }
+    verifyId(res, authorId);
     const SKIP = parseInt(skip, 10);
     const LIMIT = 8
     const userId = req.user.id;
@@ -1200,6 +1215,7 @@ const UserController = {
         message: 'No user ID provided.'
       });
     }
+    verifyId(res, authorId);
     const SKIP = parseInt(skip, 10);
     const LIMIT = 10
     const userId = req.user.id;
@@ -1263,6 +1279,7 @@ const UserController = {
         message: 'No user ID or type provided.'
       });
     } 
+    verifyId(res, userId);
     const SKIP = parseInt(skip);
     const LIMIT = 10;
 
@@ -1318,6 +1335,7 @@ const UserController = {
         message: 'No user ID, search query, or type provided.'
       });
     }
+    verifyId(res, userId);
     const SKIP = parseInt(skip, 10);
     const LIMIT = 10;
 

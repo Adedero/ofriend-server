@@ -5,6 +5,7 @@ const Block = require('../models/content-reel/block.model');
 const checkParams = require('../utils/check-params');
 const mongoose = require('mongoose');
 const { bucket } = require('../firebase/firebase-admin');
+const verifyId = require('../utils/validate-object-id');
 
 
 const ChatController = {
@@ -87,6 +88,8 @@ const ChatController = {
 
     getMessages: async (req, res) => {
         const { chatId } = req.params;
+        verifyId(res, chatId);
+
         const { skip, limit } = req.query;
         checkParams(res, [ chatId ]);
 
@@ -151,6 +154,7 @@ const ChatController = {
 
     deleteMessage: async (req, res) => {
         const { id } = req.params;
+        verifyId(res, id);
         const { url } = req.body;
         checkParams(res, [ id ]);
 
@@ -188,6 +192,7 @@ const ChatController = {
 
     editMessage: async (req, res) => {
         const { id } = req.params;
+        verifyId(res, id);
         const { edit } = req.body;
         checkParams(res, [ id, edit ]);
         await Message.findByIdAndUpdate(id, { $set: { textContent: edit } });
@@ -199,7 +204,10 @@ const ChatController = {
 
     removeMessageFromView: async (req, res) => {
         const { messageId } = req.params;
+
         checkParams(res, [ messageId ]);
+
+        verifyId(res, messageId);
 
         await Message.updateOne({ _id: messageId }, { $pull: { isVisibleTo: req.user.id } });
 
@@ -212,7 +220,11 @@ const ChatController = {
     //Clear messages in a chat
     clearMessages: async (req, res) => {
         const { chatId } = req.params;
+        
         checkParams(res, [ chatId ]);
+
+        verifyId(res, chatId);
+        
         await Message.deleteMany({ chat: chatId });
         return res.status(200).json({
             success: true,
@@ -224,6 +236,7 @@ const ChatController = {
     deleteConversation: async (req, res) => {
         const { chatId } = req.params;
         checkParams(res, [chatId]);
+        verifyId(res, chatId);
         await Promise.all([
             Message.deleteMany({ chat: chatId }),
             Chat.deleteOne({ _id: chatId }),
